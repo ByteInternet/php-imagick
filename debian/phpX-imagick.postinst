@@ -1,7 +1,15 @@
-#! /bin/sh -e
+#!/bin/sh
+set -e
 
-if test "$1" = "configure"; then
-    ucf /usr/share/phpX-imagick/imagick.ini-dist /etc/phpX/conf.d/imagick.ini
+# uncomment module loading (install after remove case)
+if test -e /etc/phpX/conf.d/imagick.ini
+then
+	sed -i s/\;extension/extension/g /etc/phpX/conf.d/imagick.ini
+fi
+
+if test "$1" = "configure"
+then
+	ucf /usr/share/phpX-imagick/imagick.ini-dist /etc/phpX/conf.d/imagick.ini
 fi
 
 #DEBHELPER#

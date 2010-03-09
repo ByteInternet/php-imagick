@@ -1,3 +1,37 @@
+php-imagick (3.0.0~rc1-1) unstable; urgency=low
+
+  * New upstream release (Closes: #524863, #570649, #573139)
+  * New maintainer (Closes: #530621)
+  * Change Build-Depends from libmagick9-dev to libmagickwand-dev
+    (Thanks Ivan Borzenkov)
+  * debian/rules:
+    + Rewrite php5 oriented only, work in progress to adapt multi php version
+    + Remove tarball mode rules
+    + Fix generated path of debian/post{inst,rm} in clean rule
+    + Delete "--with-regex" and "--disable-rpath" options (enabled by default)
+      in configure call (unrecognized options)
+    + Delete lintian override (no-shlibs-control-file)
+    + Touch examples/ and CREDITS in upstream tarball
+      (lintian package-contains-ancient-file rule)
+    + Delete unnecessary patch rule
+    + phpize5 --clean is now called in clean rule
+    + Set CFLAGS to -Wl,--as-needed, to not link against some libX11
+  * Bump to Standards-Version 3.8.4 (move section from web to php)
+  * Bump to compatibility 7 in debian/{control,compat}
+  * debian/phpX-imagick.post{inst,rm}:
+    + add "set -e" (instead of "#!/bin/sh -e")
+    + comment loading on remove (Closes: #498150)
+    (Thanks Ivan Borzenkov)
+  * debian/imagick.ini: change comment style from "#" to ";"
+    (Closes: #563433, #566970, thanks Thijs Kinkhorst)
+  * debian/{changelog,copyright}: suppress unnecessary spaces
+  * Switch to dpkg-source 3.0 (quilt) format
+  * debian/watch: mangle version according Debian Policy 5.6.12
+  * debian/ltmain.patch: Patch to reorder linker argument after phpize
+    (From BTS#347650)
+
+ -- Guillaume Delacour <gui@iroqwa.org>  Tue, 09 Mar 2010 17:58:50 +0000
+
 php-imagick (2.1.1RC1-1) unstable; urgency=low
 
   * New upstream release
@@ -11,7 +45,7 @@ php-imagick (2.1.0RC1-1) unstable; urgency=low
   * New upstream release
   * Standards-Version: 3.7.3
   * Updated "Homepage:" pseudo-header as Reference 1.14.6.
-  * Fixed segfault on 64 archs caused by implicit pointer conversion. 
+  * Fixed segfault on 64 archs caused by implicit pointer conversion.
     (Closes: #425734)
   * debian/copyright: Updated copyright holders. (closes: #453443)
 
@@ -21,7 +55,7 @@ php-imagick (2.0.1-1) unstable; urgency=low
 
   * New upstream release. (Closes: #445033)
   * Package was reorganized to use cdbs and php5/conf.d. (Closes: #431337)
-  * debian/control: 
+  * debian/control:
     removed "dpatch", "bison" and "flex" build dependence.
     added "ucf" dependence.
   * debian/rules: updated to complain with cdbs.
@@ -254,8 +288,8 @@ php4-imagick (0.9.6-1) unstable; urgency=low
 
 php4-imagick (0.9.5-1) unstable; urgency=low
 
-  * New package (Closes: #181169) 
-  * Rewrite examples/*.php to output result images instead of writting files 
+  * New package (Closes: #181169)
+  * Rewrite examples/*.php to output result images instead of writting files
 
  -- Bruno Rodrigues <bruno.rodrigues@litux.org>  Tue, 18 Mar 2003 23:39:59 +0000
 
