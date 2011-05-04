@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian PHP Maintainers <pkg-php-maint@lists.alioth.debian.org>
 Uploaders: Guillaume Delacour <gui@iroqwa.org>
 Build-Depends: debhelper (>= 7), php5-dev, libmagickwand-dev, cdbs
-Standards-Version: 3.8.4
+Standards-Version: 3.9.2
 Homepage: http://pecl.php.net/package/imagick
 
 Package: php5-imagick

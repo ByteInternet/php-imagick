@@ -19,27 +19,19 @@ IMPORTANT: Version 2.x API is not compatible with earlier versions.</description
   <email>scottmac@php.net</email>
   <active>yes</active>
  </lead>
- <date>2010-02-28</date>
- <time>12:26:59</time>
+ <date>2010-11-18</date>
+ <time>21:16:01</time>
  <version>
-  <release>3.0.0RC1</release>
-  <api>3.0.0RC1</api>
+  <release>3.0.1</release>
+  <api>3.0.1</api>
  </version>
  <stability>
-  <release>beta</release>
-  <api>beta</api>
+  <release>stable</release>
+  <api>stable</api>
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Fixes a crash when setResourceLimit is called statically
-- Fixes PECL bug #16932 Unable to read image from the filehandle
-- Return empty string if original value is empty in: 
-  * ImagickDraw::getClipPath
-  * ImagickDraw::getEncoding
-  * ImagickDraw::getFont
-  * ImagickDraw::getFontFamily
-- More relaxed validation on affinematrices
-- Initialize the counter properly in polygons. Thanks to Etienne Kneus
+- Fixed PECL bug #17244
  </notes>
  <contents>
   <dir name="/">
@@ -47,25 +39,25 @@ IMPORTANT: Version 2.x API is not compatible with earlier versions.</description
    <file md5sum="a3df0f1cb30312172c71d7c4676aee46" name="examples/captcha.php" role="doc" />
    <file md5sum="2d1d268de0ea3717948b75b471e6fdaa" name="examples/thumbnail.php" role="doc" />
    <file md5sum="2f4f60310fc9422b478eb1cb35958156" name="examples/watermark.php" role="doc" />
-   <file md5sum="94aa137cc205d18df2561cc24e0490fe" name="config.m4" role="src" />
+   <file md5sum="7f4eafaef553407baf587bcc2860a8d3" name="config.m4" role="src" />
    <file md5sum="71b1d7e2b6724cfc073d01cc03288e5e" name="config.w32" role="src" />
    <file md5sum="6077035e65e0b0bbe5a28917282e26b2" name="CREDITS" role="doc" />
-   <file md5sum="7006920a6ec088d45ff7eb0e22b3169e" name="imagick.c" role="src" />
-   <file md5sum="b78a8cc61029a8844fdad987b0aeff9f" name="imagick_class.c" role="src" />
-   <file md5sum="72040285276044df39365f9f1295a2c6" name="imagick_read.c" role="src" />
-   <file md5sum="3a030eea3a66b5c14ec3b4d283d998d2" name="imagickdraw_class.c" role="src" />
+   <file md5sum="6a90a9729f9582096b2b2cc46878c687" name="imagick.c" role="src" />
+   <file md5sum="6e79bc68adcb706c49c9f9c4a4d3e2f8" name="imagick_class.c" role="src" />
+   <file md5sum="48252f44e20eea7ab7ad040a5b56376b" name="imagick_read.c" role="src" />
+   <file md5sum="4806e09a366c50ca4e1cac7f1246905a" name="imagickdraw_class.c" role="src" />
    <file md5sum="b0af1d0dff59ffd68c888890d7bb4742" name="imagickpixel_class.c" role="src" />
    <file md5sum="6cddac0e31deca36b702dc79ad4fe0b9" name="imagickpixeliterator_class.c" role="src" />
-   <file md5sum="b909a5d006fc0d82c5e0d2c94b63bf02" name="imagick_helpers.c" role="src" />
-   <file md5sum="72040285276044df39365f9f1295a2c6" name="imagick_read.c" role="src" />
-   <file md5sum="63815a8162f01c53f431f15edf8e794a" name="php_imagick.h" role="src">
+   <file md5sum="b0e28f3171f78fd202d6a39f75064564" name="imagick_helpers.c" role="src" />
+   <file md5sum="074bbd87254d8b96c7212e08a6b75c87" name="php_imagick.h" role="src">
     <tasks:replace from="@PACKAGE_VERSION@" to="version" type="package-info" />
    </file>
-   <file md5sum="22c5493e702a4c5e17c2c4f657882fff" name="php_imagick_defs.h" role="src" />
-   <file md5sum="dcc4c295c29de2ee4ee531ec4d1821cb" name="php_imagick_macros.h" role="src" />
-   <file md5sum="5f1229c008203fe2779391935c17696f" name="php_imagick_shared.h" role="src" />
+   <file md5sum="d7643bba3b4499abf8a2518f8c0213d0" name="php_imagick_defs.h" role="src" />
+   <file md5sum="f308d139c42bd91ca00bd3e79b0f904e" name="php_imagick_macros.h" role="src" />
+   <file md5sum="a3028f4371268f32d9eb5c9d858a8e7c" name="php_imagick_shared.h" role="src" />
    <file md5sum="d41d8cd98f00b204e9800998ecf8427e" name="TODO" role="doc" />
    <file md5sum="d41d8cd98f00b204e9800998ecf8427e" name="INSTALL" role="doc" />
+   <file md5sum="5955915aa28a0689201a43694602bc1d" name="ChangeLog" role="doc" />
   </dir>
  </contents>
  <dependencies>

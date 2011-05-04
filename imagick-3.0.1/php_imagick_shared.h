@@ -17,57 +17,23 @@
    |         Scott MacVicar <scottmac@php.net>                            |
    +----------------------------------------------------------------------+
 */
-#ifndef PHP_IMAGICK_H
-/* Prevent double inclusion */
-#define PHP_IMAGICK_H
 
-/* Define Extension Properties */
-#define PHP_IMAGICK_EXTNAME    "imagick"
-#define PHP_IMAGICK_VERSION    "3.0.0RC1"
-#define PHP_IMAGICK_EXTNUM     30000
+#ifndef _PHP_IMAGICK_SHARED_H_
+# define _PHP_IMAGICK_SHARED_H_
 
-/* Import configure options when building 
-   outside of the PHP source tree */
-#ifdef HAVE_CONFIG_H
-# include "config.h"
+/* Only works with newer Imagick */
+#ifndef IMAGICK_USE_NEW_HEADER
+# define IMAGICK_USE_NEW_HEADER 1
 #endif
 
-#ifdef ZTS
-# include "TSRM.h"
+#include "php_imagick.h"
+#include "php_imagick_defs.h"
+
+/*
+	Allow extensions to use the class entries
+*/
+MY_IMAGICK_EXPORTS zend_class_entry *php_imagick_get_class_entry();
+MY_IMAGICK_EXPORTS zend_class_entry *php_imagickdraw_get_class_entry();
+MY_IMAGICK_EXPORTS zend_class_entry *php_imagickpixel_get_class_entry();
+
 #endif
-
-/* Include PHP Standard Headers */
-#include "php.h"
-
-/* Include locale header */
-#ifdef HAVE_LOCALE_H
-# include <locale.h>
-#endif
-
-/* Include magic wand header */
-#ifdef IMAGICK_USE_NEW_HEADER
-#  include <wand/MagickWand.h>
-#else
-#  include <wand/magick-wand.h>
-#endif
-
-#ifndef DefaultChannels
-# define DefaultChannels (AllChannels &~ OpacityChannel)
-#endif
-
-/* Some extra headers */
-#include "Zend/zend_exceptions.h"
-#include "Zend/zend_interfaces.h"
-#include "ext/standard/php_string.h"
-#include "ext/standard/info.h"
-#include "ext/standard/php_filestat.h"
-#include "php_ini.h"
-
-/* Define the entry point symbol
- * Zend will use when loading this module
- */
-extern zend_module_entry imagick_module_entry;
-#define phpext_imagick_ptr &imagick_module_entry
-
-#endif /* PHP_IMAGICK_H */
-

@@ -19,7 +19,7 @@ LDFLAGS := -Wl,--as-needed $(LDFLAGS)
 clean::
 	rm -f debian/php5-imagick.postrm \
 		debian/php5-imagick.postinst
-	cd $(DEB_SRCDIR) && phpize5 --clean
+	-cd $(DEB_SRCDIR) && phpize5 --clean
 
 configure_for_php5::
 	# Hack here because:
@@ -45,8 +45,3 @@ install/php5-imagick:: configure_for_php5
 	echo "php5:Depends=phpapi-`php-config5 --phpapi`, php5-common" >> debian/php5-imagick.substvars
 	mkdir -p debian/php5-imagick/usr/share/php5-imagick
 	cp debian/imagick.ini debian/php5-imagick/usr/share/php5-imagick/imagick.ini-dist
-
-# package-contains-ancient-file error (1970-01-01), update timestamp
-binary-post-install/php5-imagick::
-	touch debian/php5-imagick/usr/share/doc/php5-imagick/examples/*.php
-	touch debian/php5-imagick/usr/share/doc/php5-imagick/CREDITS

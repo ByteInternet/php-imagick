@@ -1,3 +1,12 @@
+php-imagick (3.0.1-1) unstable; urgency=low
+
+  * New upstream release
+  * Bump to Standards-Version 3.9.2 (no changes needed)
+  * debian/rules: delete "touch examples/ and CREDITS" to update timestamp
+    (fixed upstream)
+
+ -- Guillaume Delacour <gui@iroqwa.org>  Wed, 04 May 2011 22:26:04 +0200
+
 php-imagick (3.0.0~rc1-1) unstable; urgency=low
 
   * New upstream release (Closes: #524863, #570649, #573139)
