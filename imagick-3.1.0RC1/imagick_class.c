@@ -21,6 +21,8 @@
 #include "php_imagick.h"
 #include "php_imagick_defs.h"
 #include "php_imagick_macros.h"
+#include "php_imagick_helpers.h"
+#include "php_imagick_file.h"
 
 #if MagickLibVersion > 0x628
 /* {{{ proto bool Imagick::pingImageFile(resource filehandle)
@@ -42,13 +44,19 @@ PHP_METHOD(imagick, pingimagefile)
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
 	php_stream_from_zval(stream, &zstream);
-	result = php_imagick_stream_handler(intern, stream, filename, IMAGICK_PING_IMAGE_FILE TSRMLS_CC);
+	result = php_imagick_stream_handler(intern, stream, ImagickPingImageFile TSRMLS_CC);
 	
 	if (result == 1) {
 		RETURN_FALSE;
 	} else if (result == 2) {
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable to ping image from the filehandle", 1);
 	}
+	
+	if (filename) {
+		MagickSetImageFilename(intern->magick_wand, filename);
+		IMAGICK_CORRECT_ITERATOR_POSITION(intern);
+	}
+	
 	RETURN_TRUE;
 }
 /* }}} */
@@ -522,6 +530,10 @@ PHP_METHOD(imagick, roundcornersimage)
 	image_width = MagickGetImageWidth(intern->magick_wand);
 	image_height = MagickGetImageHeight(intern->magick_wand);
 
+	if (!image_width || !image_height) {
+	    IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Unable to round corners on empty image", 1);
+	}
+
 	status = MagickSetImageMatte(intern->magick_wand, MagickTrue);
 
 	if (status == MagickFalse) {
@@ -533,17 +545,22 @@ PHP_METHOD(imagick, roundcornersimage)
 	draw       = (DrawingWand *)NewDrawingWand();
 	mask_image = (MagickWand *)NewMagickWand();
 
+#define exit_cleanup() \
+	if (color != NULL) color = DestroyPixelWand(color); \
+	if (draw != NULL) draw = DestroyDrawingWand(draw); \
+	if (mask_image != NULL) mask_image = DestroyMagickWand(mask_image);
+
 	status = PixelSetColor(color, "transparent");
 
 	if (status == MagickFalse) {
-		deallocate_wands(mask_image, draw, color TSRMLS_CC);
+        exit_cleanup();
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Unable to set pixel color", 1);
 	}
 
 	status = MagickNewImage(mask_image, image_width, image_height, color);
 
 	if (status == MagickFalse) {
-		deallocate_wands(mask_image, draw, color TSRMLS_CC);
+		exit_cleanup();
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Unable to allocate mask image", 1);
 	}
 
@@ -551,7 +568,7 @@ PHP_METHOD(imagick, roundcornersimage)
 	status = PixelSetColor(color, "white");
 
 	if (status == MagickFalse) {
-		deallocate_wands(mask_image, draw, color TSRMLS_CC);
+		exit_cleanup();
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Unable to set pixel color", 1);
 	}
 
@@ -559,7 +576,7 @@ PHP_METHOD(imagick, roundcornersimage)
 	status = PixelSetColor(color, "black");
 
 	if (status == MagickFalse) {
-		deallocate_wands(mask_image, draw, color TSRMLS_CC);
+		exit_cleanup();
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Unable to set pixel color", 1);
 	}
 
@@ -572,19 +589,20 @@ PHP_METHOD(imagick, roundcornersimage)
 	IMAGICK_RESTORE_LOCALE(old_locale, restore);
 
 	if (status == MagickFalse) {
-		deallocate_wands(mask_image, draw, color TSRMLS_CC);
+		exit_cleanup();
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Unable to draw on image", 1);
 	}
 
 	status = MagickCompositeImage(intern->magick_wand, mask_image, DstInCompositeOp, 0, 0);
 
 	if (status == MagickFalse) {
-		deallocate_wands(mask_image, draw, color TSRMLS_CC);
+		exit_cleanup();
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Unable to composite image", 1);
 	}
 
-	deallocate_wands(mask_image, draw, color TSRMLS_CC);
+	exit_cleanup();
 	RETURN_TRUE;
+#undef exit_cleanup
 }
 /* }}} */
 
@@ -1213,7 +1231,7 @@ PHP_METHOD(imagick, writeimagefile)
 	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
 
 	php_stream_from_zval(stream, &zstream);
-	result = php_imagick_stream_handler(intern, stream, NULL, IMAGICK_WRITE_IMAGE_FILE TSRMLS_CC);
+	result = php_imagick_stream_handler(intern, stream, ImagickWriteImageFile TSRMLS_CC);
 	
 	if (result == 1) {
 		RETURN_FALSE;
@@ -1242,7 +1260,7 @@ PHP_METHOD(imagick, writeimagesfile)
 	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
 
 	php_stream_from_zval(stream, &zstream);
-	result = php_imagick_stream_handler(intern, stream, NULL, IMAGICK_WRITE_IMAGE_FILE TSRMLS_CC);
+	result = php_imagick_stream_handler(intern, stream, ImagickWriteImagesFile TSRMLS_CC);
 	
 	if (result == 1) {
 		RETURN_FALSE;
@@ -2307,7 +2325,7 @@ PHP_METHOD(imagick, transformimagecolorspace)
 	if (status == MagickFalse) {
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable to transform image colorspace", 1);
 	}
-    RETURN_TRUE;
+	RETURN_TRUE;
 }
 /* }}} */
 #endif
@@ -2464,9 +2482,7 @@ PHP_METHOD(imagick, __construct)
 	php_imagick_object *intern;
 	zval *files = NULL;
 	HashPosition pos;
-	HashTable *hash_table;
 	int status = 0;
-	zval **ppzval, tmpcopy;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|z!", &files) == FAILURE) {
 		return;
@@ -2476,48 +2492,49 @@ PHP_METHOD(imagick, __construct)
 	if (!files) {
 		return;
 	}
+	
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
 	/* A single file was given */
 	if (Z_TYPE_P(files) == IS_STRING) {
-		intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
-		status = read_image_into_magickwand(intern, 1, Z_STRVAL_P(files), Z_STRLEN_P(files) TSRMLS_CC);
+		struct php_imagick_file_t file = {0};
+
+		if (!php_imagick_file_init(&file, Z_STRVAL_P(files), Z_STRLEN_P(files) TSRMLS_CC)) {
+			IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The filename is too long", 1);
+		}
+		status = php_imagick_read_file(intern, &file, ImagickReadImage TSRMLS_CC);
+		php_imagick_file_deinit(&file);
+		
 		IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, Z_STRVAL_P(files), status, IMAGICK_DONT_FREE_FILENAME, "Unable to read the file: %s");
-		return;
 	}
 
 	/* an array of filenames was given */
 	if (Z_TYPE_P(files) == IS_ARRAY) {
 		
 		char *filename = NULL;
+		
+		for(zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(files), &pos);
+			zend_hash_has_more_elements_ex(Z_ARRVAL_P(files), &pos) == SUCCESS;
+			zend_hash_move_forward_ex(Z_ARRVAL_P(files), &pos)) {
+				
+			struct php_imagick_file_t file = {0};
+			zval **ppzval;
 
-		hash_table = Z_ARRVAL_P(files);
-		intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
-
-		for(zend_hash_internal_pointer_reset_ex(hash_table, &pos);
-			zend_hash_has_more_elements_ex(hash_table, &pos) == SUCCESS;
-			zend_hash_move_forward_ex(hash_table, &pos)) {
-
-			if (zend_hash_get_current_data_ex(hash_table, (void**)&ppzval, &pos) == FAILURE) {
+			if (zend_hash_get_current_data_ex(Z_ARRVAL_P(files), (void**)&ppzval, &pos) == FAILURE) {
 				continue;
 			}
-
-			tmpcopy = **ppzval;
-			zval_copy_ctor(&tmpcopy);
-			INIT_PZVAL(&tmpcopy);
-			convert_to_string(&tmpcopy);
-
-			/* Dup the filename */
-			filename = estrdup(Z_STRVAL(tmpcopy));
-
-			status = read_image_into_magickwand(intern, 1, filename, strlen(filename) TSRMLS_CC);
-			zval_dtor(&tmpcopy);
+			
+			if (!php_imagick_file_init(&file, Z_STRVAL_PP(ppzval), Z_STRLEN_PP(ppzval) TSRMLS_CC)) {
+				IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The filename is too long", 1);
+			}
+			
+			status = php_imagick_read_file(intern, &file, ImagickReadImage TSRMLS_CC);
+			php_imagick_file_deinit(&file);
 
 			if (status != IMAGICK_READ_WRITE_NO_ERROR) {
+				filename = estrdup(Z_STRVAL_PP(ppzval));
 				break;
 			}
-
-			/* Free the filename */
-			efree(filename);
 		}
 		IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, filename, status, IMAGICK_FREE_FILENAME, "Unable to read the file: %s");
 		RETURN_TRUE;
@@ -2759,6 +2776,7 @@ PHP_METHOD(imagick, readimage)
 	char *filename;
 	int filename_len, status;
 	php_imagick_object *intern;
+	struct php_imagick_file_t file = {0};
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &filename, &filename_len) == FAILURE) {
@@ -2766,7 +2784,14 @@ PHP_METHOD(imagick, readimage)
 	}
 
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
-	status = read_image_into_magickwand(intern, 1, filename, filename_len TSRMLS_CC);
+	
+	if (!php_imagick_file_init(&file, filename, filename_len TSRMLS_CC)) {
+		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The filename is too long", 1);
+	}
+	
+	status = php_imagick_read_file(intern, &file, ImagickReadImage TSRMLS_CC);
+	php_imagick_file_deinit(&file);
+	
 	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, filename, status, IMAGICK_DONT_FREE_FILENAME, "Unable to read the file: %s");
 	RETURN_TRUE;
 }
@@ -2782,40 +2807,36 @@ PHP_METHOD(imagick, readimages)
 	int status = 0;
 	php_imagick_object *intern;
 	HashPosition pos;
-	HashTable *hash_table;
-	zval **ppzval, tmpcopy;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &files) == FAILURE) {
 		return;
 	}
 
-	hash_table = Z_ARRVAL_P(files);
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	for(zend_hash_internal_pointer_reset_ex(hash_table, &pos);
-		zend_hash_has_more_elements_ex(hash_table, &pos) == SUCCESS;
-		zend_hash_move_forward_ex(hash_table, &pos)) {
+	for(zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(files), &pos);
+		zend_hash_has_more_elements_ex(Z_ARRVAL_P(files), &pos) == SUCCESS;
+		zend_hash_move_forward_ex(Z_ARRVAL_P(files), &pos)) {
 
-		if (zend_hash_get_current_data_ex(hash_table, (void**)&ppzval, &pos) == FAILURE) {
+		struct php_imagick_file_t file = {0};
+		zval **ppzval;
+
+		if (zend_hash_get_current_data_ex(Z_ARRVAL_P(files), (void**)&ppzval, &pos) == FAILURE) {
 			continue;
 		}
-
-		tmpcopy = **ppzval;
-		zval_copy_ctor(&tmpcopy);
-		INIT_PZVAL(&tmpcopy);
-		convert_to_string(&tmpcopy);
-
-		filename = estrdup(Z_STRVAL(tmpcopy));
-		status = read_image_into_magickwand(intern, 1, filename, strlen(filename) TSRMLS_CC);
-
-		zval_dtor(&tmpcopy);
+		
+		if (!php_imagick_file_init(&file, Z_STRVAL_PP(ppzval), Z_STRLEN_PP(ppzval) TSRMLS_CC)) {
+			IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The filename is too long", 1);
+		}
+		
+		status = php_imagick_read_file(intern, &file, ImagickReadImage TSRMLS_CC);
+		php_imagick_file_deinit(&file);
 
 		if (status != IMAGICK_READ_WRITE_NO_ERROR) {
+			filename = estrdup(Z_STRVAL_PP(ppzval));
 			break;
 		}
-
-		efree(filename);
 	}
 	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, filename, status, IMAGICK_FREE_FILENAME, "Unable to read the file: %s");
 	RETURN_TRUE;
@@ -2831,7 +2852,8 @@ PHP_METHOD(imagick, pingimage)
 	int filename_len;
 	int status = 0;
 	php_imagick_object *intern;
-
+	struct php_imagick_file_t file = {0};
+	
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &filename, &filename_len) == FAILURE) {
 		return;
@@ -2839,9 +2861,13 @@ PHP_METHOD(imagick, pingimage)
 
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	status = read_image_into_magickwand(intern, 2, filename, filename_len TSRMLS_CC);
-	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, filename, status, IMAGICK_DONT_FREE_FILENAME, "Unable to read the file: %s");
+	if (!php_imagick_file_init(&file, filename, filename_len TSRMLS_CC)) {
+		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The filename is too long", 1);
+	}
+	status = php_imagick_read_file(intern, &file, ImagickPingImage TSRMLS_CC);
+	php_imagick_file_deinit(&file);
 
+	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, filename, status, IMAGICK_DONT_FREE_FILENAME, "Unable to ping the file: %s");
 	RETURN_TRUE;
 }
 /* }}} */
@@ -2865,13 +2891,19 @@ PHP_METHOD(imagick, readimagefile)
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
 	php_stream_from_zval(stream, &zstream);
-	result = php_imagick_stream_handler(intern, stream, filename, IMAGICK_READ_IMAGE_FILE TSRMLS_CC);
+	result = php_imagick_stream_handler(intern, stream, ImagickReadImageFile TSRMLS_CC);
 	
 	if (result == 1) {
 		RETURN_FALSE;
 	} else if (result == 2) {
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable to read image from the filehandle", 1);
 	}
+	
+	if (filename) {
+		MagickSetImageFilename(intern->magick_wand, filename);
+		IMAGICK_CORRECT_ITERATOR_POSITION(intern);
+	}
+	
 	RETURN_TRUE;
 }
 /* }}} */
@@ -3581,7 +3613,8 @@ PHP_METHOD(imagick, newpseudoimage)
 	long columns, rows;
 	char *pseudo_string;
 	int pseudo_string_len;
-
+	struct php_imagick_file_t file = {0};
+	
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lls", &columns, &rows, &pseudo_string, &pseudo_string_len) == FAILURE) {
 		return;
@@ -3602,7 +3635,12 @@ PHP_METHOD(imagick, newpseudoimage)
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable to create new pseudo image", 1);
 	}
 	
-	status = read_image_into_magickwand(intern, 1, pseudo_string, pseudo_string_len TSRMLS_CC);
+	if (!php_imagick_file_init(&file, pseudo_string, pseudo_string_len TSRMLS_CC)) {
+		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The filename is too long", 1);
+	}
+	status = php_imagick_read_file(intern, &file, ImagickReadImage TSRMLS_CC);
+	php_imagick_file_deinit(&file);
+
 	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, pseudo_string, status, IMAGICK_DONT_FREE_FILENAME, "Unable to create new pseudo image: %s");
 	RETURN_TRUE;
 }
@@ -5091,7 +5129,7 @@ PHP_METHOD(imagick, getimagebackgroundcolor)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
 		return;
 	}
-	
+
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
 
@@ -5103,6 +5141,7 @@ PHP_METHOD(imagick, getimagebackgroundcolor)
 	}
 
 	if (status == MagickFalse) {
+		tmp_wand = DestroyPixelWand(tmp_wand);
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable to get image background color", 1);
 	}
 
@@ -5169,6 +5208,7 @@ PHP_METHOD(imagick, getimagebordercolor)
 	}
 
 	if (status == MagickFalse) {
+		tmp_wand = DestroyPixelWand(tmp_wand);
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable to get image border color", 1);
 	}
 
@@ -5365,6 +5405,7 @@ PHP_METHOD(imagick, getimagecolormapcolor)
 	}
 
 	if (status == MagickFalse) {
+		tmp_wand = DestroyPixelWand(tmp_wand);
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable to get image colormap color", 1);
 	}
 
@@ -5709,6 +5750,7 @@ PHP_METHOD(imagick, getimagemattecolor)
 	}
 
 	if (status == MagickFalse) {
+		tmp_wand = DestroyPixelWand(tmp_wand);
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable get image matter color", 1);
 	}
 
@@ -5773,13 +5815,15 @@ PHP_METHOD(imagick, getimagepixelcolor)
 	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
 
 	tmp_wand = NewPixelWand();
-	status = MagickGetImagePixelColor(intern->magick_wand, x, y , tmp_wand);
 
-	if (tmp_wand == (PixelWand *)NULL) {
-		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable to get image pixel color", 1);
+	if (!tmp_wand) {
+		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Failed to allocate new PixelWand", 1);
 	}
 
+	status = MagickGetImagePixelColor(intern->magick_wand, x, y , tmp_wand);
+
 	if (status == MagickFalse) {
+		tmp_wand = DestroyPixelWand(tmp_wand);
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable get image pixel color", 1);
 	}
 
@@ -7715,9 +7759,10 @@ PHP_METHOD(imagick, labelimage)
 PHP_METHOD(imagick, writeimage)
 {
 	char *filename = NULL;
-	int error = 0;
+	int status = 0;
 	int filename_len = 0;
 	php_imagick_object *intern;
+	struct php_imagick_file_t file = {0};
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|s!", &filename, &filename_len) == FAILURE) {
 		return;
@@ -7739,9 +7784,13 @@ PHP_METHOD(imagick, writeimage)
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Can not use empty string as a filename", 1);
 	}
 
-	error = write_image_from_filename(intern, filename, 0, 1 TSRMLS_CC);
-	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, filename, error, IMAGICK_DONT_FREE_FILENAME, "Unable to write the file: %s");
+	if (!php_imagick_file_init(&file, filename, filename_len TSRMLS_CC)) {
+		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The filename is too long", 1);
+	}
+	status = php_imagick_write_file(intern, &file, ImagickWriteImage, 0 TSRMLS_CC);
+	php_imagick_file_deinit(&file);
 
+	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, filename, status, IMAGICK_DONT_FREE_FILENAME, "Unable to write the file: %s");
 	RETURN_TRUE;
 }
 /* }}} */
@@ -7755,7 +7804,8 @@ PHP_METHOD(imagick, writeimages)
 	zend_bool adjoin;
 	int filename_len;
 	php_imagick_object *intern;
-	int error = 0;
+	int status = 0;
+	struct php_imagick_file_t file = {0};
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sb", &filename, &filename_len, &adjoin) == FAILURE) {
 		return;
@@ -7765,13 +7815,17 @@ PHP_METHOD(imagick, writeimages)
 	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
 
 
-	if (filename_len == 0) {
+	if (!filename_len) {
 		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Can not use empty string as a filename", 1);
 	}
-
-	error = write_image_from_filename(intern, filename, adjoin, 2 TSRMLS_CC);
-	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, filename, error, IMAGICK_DONT_FREE_FILENAME, "Unable to write the file: %s");
-
+	
+	if (!php_imagick_file_init(&file, filename, filename_len TSRMLS_CC)) {
+		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The filename is too long", 1);
+	}
+	status = php_imagick_write_file(intern, &file, ImagickWriteImage, adjoin TSRMLS_CC);
+	php_imagick_file_deinit(&file);
+	
+	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, filename, status, IMAGICK_DONT_FREE_FILENAME, "Unable to write the file: %s");
 	RETURN_TRUE;
 
 }
@@ -8334,6 +8388,8 @@ PHP_METHOD(imagick, clone)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
 		return;
 	}
+	
+	IMAGICK_METHOD_DEPRECATED("Imagick", "clone");
 	
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	tmp_wand = CloneMagickWand(intern->magick_wand);
