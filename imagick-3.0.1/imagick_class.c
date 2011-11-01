@@ -1377,6 +1377,7 @@ PHP_METHOD(imagick, recolorimage)
 	long num_elements;
 	zval *matrix;
 	double *array;
+	unsigned long order;
 	
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &matrix) == FAILURE) {
 		return;
@@ -1391,7 +1392,14 @@ PHP_METHOD(imagick, recolorimage)
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The map contains disallowed characters", 1);
 	}
 	
-	status = MagickRecolorImage(intern->magick_wand, num_elements, array);
+	order = (unsigned long)sqrt(num_elements);
+	
+	if (pow((double)order, 2) != num_elements) {
+		efree(array);
+		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The color matrix must contain a square number of elements", 1);
+	}
+
+	status = MagickRecolorImage(intern->magick_wand, order, array);
 	efree(array);
 	
 	if (status == MagickFalse) {
@@ -2275,6 +2283,35 @@ PHP_METHOD(imagick, functionimage)
 /* }}} */
 #endif
 
+#if MagickLibVersion > 0x651
+/* {{{ proto boolean Imagick::transformImageColorspace()
+	Transform image colorspace
+*/
+PHP_METHOD(imagick, transformimagecolorspace)
+{
+	php_imagick_object *intern;
+	long colorspace;
+	MagickBooleanType status;
+
+	/* Parse parameters given to function */
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &colorspace) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
+
+	status = MagickTransformImageColorspace(intern->magick_wand, colorspace);
+
+    /* No magick is going to happen */
+	if (status == MagickFalse) {
+		IMAGICK_THROW_IMAGICK_EXCEPTION(intern->magick_wand, "Unable to transform image colorspace", 1);
+	}
+    RETURN_TRUE;
+}
+/* }}} */
+#endif
+
 #if MagickLibVersion > 0x652
 /* {{{ proto boolean Imagick::haldClutImage(Imagick hald[, int CHANNEL])
    Replaces colors in the image from a Hald color lookup table
@@ -2355,6 +2392,9 @@ PHP_METHOD(imagick, getimageartifact)
 	return;
 }
 
+/* {{{ proto boolean Imagick::deleteImageArtifact(string $artifact)
+   Delete image artifact
+*/
 PHP_METHOD(imagick, deleteimageartifact) 
 {
 	php_imagick_object *intern;
@@ -2377,6 +2417,43 @@ PHP_METHOD(imagick, deleteimageartifact)
 	
 	RETURN_TRUE;
 }
+/* }}} */
+
+/* {{{ proto integer Imagick::getColorspace()
+   Get the object colorspace property
+*/
+PHP_METHOD(imagick, getcolorspace) 
+{
+	php_imagick_object *intern;
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+		return;
+	}
+	
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	RETURN_LONG(MagickGetColorspace(intern->magick_wand));
+}
+/* }}} */
+
+/* {{{ proto boolean Imagick::setColorspace([int COLORSPACE])
+   Set the object colorspace property
+*/
+PHP_METHOD(imagick, setcolorspace) 
+{
+	php_imagick_object *intern;
+	long colorspace;
+	MagickBooleanType status;
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &colorspace) == FAILURE) {
+		return;
+	}
+	
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	status = MagickSetColorspace(intern->magick_wand, colorspace);
+	
+	RETURN_BOOL(status == MagickTrue);
+}
+/* }}} */
 #endif
 
 /* {{{ proto Imagick Imagick::__construct([mixed files] )
@@ -4650,11 +4727,12 @@ PHP_METHOD(imagick, unsharpmaskimage)
 PHP_METHOD(imagick, convolveimage)
 {
 	php_imagick_object *intern;
-	long order;
 	MagickBooleanType status;
 	zval *kernel_array;
 	double *kernel;
 	long channel = DefaultChannels;
+	unsigned long order = 0;
+	long num_elements = 0;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a|l",  &kernel_array, &channel) == FAILURE) {
@@ -4664,10 +4742,17 @@ PHP_METHOD(imagick, convolveimage)
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
 
-	kernel = get_double_array_from_zval(kernel_array, &order TSRMLS_CC);
+	kernel = get_double_array_from_zval(kernel_array, &num_elements TSRMLS_CC);
 
-	if(kernel == (double *)NULL) {
+	if (!kernel) {
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Unable to read matrix array", 1);
+	}
+	
+	order = (unsigned long)sqrt(num_elements);
+	
+	if (pow((double)order, 2) != num_elements) {
+		efree(kernel);
+		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The kernel must contain a square number of elements", 1);
 	}
 
 	status = MagickConvolveImageChannel(intern->magick_wand, channel, order, kernel);
@@ -7641,15 +7726,16 @@ PHP_METHOD(imagick, writeimage)
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
 
-	if (filename == NULL) {
+	if (!filename) {
 		filename = MagickGetImageFilename(intern->magick_wand);
+		
+		if (!filename) {
+			IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "No image filename specified", 1);
+		}
+		filename_len = strlen(filename);
 	}
 
-	if (filename == NULL) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "No image filename specified", 1);
-	}
-	
-	if (filename_len == 0) {
+	if (!filename_len) {
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Can not use empty string as a filename", 1);
 	}
 

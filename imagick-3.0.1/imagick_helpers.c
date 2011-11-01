@@ -221,6 +221,147 @@ return_on_error:
 	}
 }
 
+/*
+	Does the image filename have format in it
+	For example png:/tmp/filename.jpg
+*/
+zend_bool php_imagick_has_format(const char *filename, int filename_len)
+{
+	/* Absolute path wont have the format in it */
+	if (IS_ABSOLUTE_PATH(filename, filename_len)) {
+		return 0;
+	}
+	
+	/* If the path is not absolute, in that case it should have : to indicate the format */
+	while (*filename != '\0') {
+		if (*(filename++) == ':') {
+			return 1;
+		}
+	}
+	/* Not found */
+	return 0;
+}
+
+/*
+	Returns the filename type, following types are recognised:
+	PHP_IMAGICK_FILE_PLAIN		plain filename, no format or page specifiers
+	PHP_IMAGICK_FILE_FORMAT		has format specifier, f.ex png:/tmp/test.jpg
+	PHP_IMAGICK_FILE_URL		is url, http://example.com/test.gif (this also checks that php has wrapper for that url type)
+*/
+
+int php_imagick_filename_type(const char *filename, int filename_len TSRMLS_DC)
+{
+	char *path = NULL;
+	
+	if (IS_ABSOLUTE_PATH(filename, filename_len)) {
+		return PHP_IMAGICK_FILE_PLAIN;
+	}
+	
+	if (php_imagick_has_format(filename, filename_len)) {
+		if (php_stream_locate_url_wrapper(filename, &path, STREAM_LOCATE_WRAPPERS_ONLY TSRMLS_CC)) {
+			return PHP_IMAGICK_FILE_URL;
+		} else {
+			if ((filename_len > 6 && memcmp(filename, "ftp", 3) == 0) ||
+				(filename_len > 7 && memcmp(filename, "http", 4) == 0) ||
+				(filename_len > 8 && memcmp(filename, "https", 5) == 0)) {
+				return PHP_IMAGICK_FILE_URL;		
+			}
+		}
+		return PHP_IMAGICK_FILE_FORMAT;
+	}
+	return PHP_IMAGICK_FILE_PLAIN;
+}
+
+/*
+	Check if the filename specifies a page
+	Something like /tmp/test.pdf[12]
+*/
+zend_bool php_imagick_filename_has_page(const char *filename, int filename_len, int *page)
+{
+	int i;
+	zend_bool has_number = 0;
+	*page = 0;
+
+	for (i = filename_len; i >= 0; i--) {
+		if (i == filename_len) {
+			if (filename[i] != ']') {
+				return 0;
+			}
+		}
+		else {
+			if (filename[i] >= 48 && filename[i] <= 57) {
+				has_number = 1;
+				*page += atoi(&(filename[i]));
+			}
+			else if (has_number && filename[i] == '[') {
+				return 1;
+			}
+			else {
+				return 0;
+			}
+		}	
+	}
+	return 0;
+}
+
+/*
+	Returns an absolute path for the filename and format if there is one associated with the filename
+	This works for PHP_IMAGICK_FILE_PLAIN and PHP_IMAGICK_FILE_FORMAT
+*/
+char *php_imagick_filename_path(const char *filename, int filename_len, char **format, int *page TSRMLS_DC)
+{
+	char *filename_cp, *path;
+	int type;
+	
+	*format = NULL;
+	*page   = -1;
+	
+	filename_cp = estrdup(filename);
+	
+	if (php_imagick_filename_has_page(filename_cp, filename_len, page)) {
+		for (; filename_len >= 0; filename_len--) {
+			if (filename_cp[filename_len] == '[') {
+				filename_cp[filename_len] = '\0';
+				break;
+			}
+		}
+	}
+	
+	if (IS_ABSOLUTE_PATH(filename_cp, filename_len)) {
+		return filename_cp;
+	}
+
+	type = php_imagick_filename_type(filename_cp, filename_len TSRMLS_CC);
+	
+	if (type == PHP_IMAGICK_FILE_PLAIN) {
+		path = expand_filepath(filename_cp, NULL TSRMLS_CC);
+		efree(filename_cp);
+		return path;
+	}
+	else if (type == PHP_IMAGICK_FILE_FORMAT) {
+		
+		char *pch, *last = NULL;
+
+		pch = php_strtok_r(filename_cp, ":", &last);
+
+		if (!pch || !last || (strlen(last) == 0)) {
+			efree(filename_cp);
+			return NULL;
+		}
+
+		/* Store the original format */
+		*format = estrdup(pch);
+		path    = expand_filepath(last, NULL TSRMLS_CC);
+
+		efree(filename_cp);
+		return path;
+	}
+	
+	efree(filename_cp);
+	return NULL;
+}
+
+
 zend_bool php_imagick_validate_map(const char *map TSRMLS_DC)
 {
 	zend_bool match;
@@ -420,57 +561,6 @@ int check_configured_font(char *font, int font_len TSRMLS_DC)
 	return retval;
 }
 
-int check_write_access(char *absolute TSRMLS_DC)
-{
-	/* Check if file exists */
-	if (VCWD_ACCESS(absolute, F_OK)) {
-
-		if (!VCWD_ACCESS(absolute, W_OK)) {
-
-			efree(absolute);
-			return IMAGICK_READ_WRITE_PERMISSION_DENIED;
-
-		} else {
-
-			/* File is not there. Check that dir exists and that its writable */
-			char path[MAXPATHLEN];
-			size_t path_len;
-			memset(path, '\0', MAXPATHLEN);
-			memcpy(path, absolute, strlen(absolute));
-			path_len = php_dirname(path, strlen(absolute));
-
-			/* Path does not exist */
-			if (!VCWD_ACCESS(path, F_OK)) {
-				zval *ret;
-				MAKE_STD_ZVAL(ret);
-				
-				/* stat to make sure the path is actually a directory */
-				php_stat(path, path_len, FS_IS_DIR, ret TSRMLS_CC);
-	
-				/* It is not a dir */
-				if (Z_TYPE_P(ret) == IS_BOOL && Z_BVAL_P(ret) == 0) {
-					FREE_ZVAL(ret);
-					return IMAGICK_READ_WRITE_PATH_DOES_NOT_EXIST;
-				}
-				FREE_ZVAL(ret);
-				
-				if (VCWD_ACCESS(path, W_OK)) {
-					return IMAGICK_READ_WRITE_PERMISSION_DENIED;
-				}
-					
-			} else {
-				return IMAGICK_READ_WRITE_PATH_DOES_NOT_EXIST;
-			}
-								
-			/* Can't write the file */
-			if (VCWD_ACCESS(path, W_OK)) {
-				return IMAGICK_READ_WRITE_PERMISSION_DENIED;
-			}
-		}
-	}
-	return IMAGICK_READ_WRITE_NO_ERROR;
-}
-
 zend_bool crop_thumbnail_image(MagickWand *magick_wand, long desired_width, long desired_height TSRMLS_DC)
 {
 	double ratio_x, ratio_y;
@@ -563,11 +653,10 @@ void *get_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
 		zval tmp_zx, *tmp_pzx, tmp_zy, *tmp_pzy;
 
 		/* If its something than array lets error here */
-		if(Z_TYPE_PP(ppzval) != IS_ARRAY) {
-			coordinates = (PointInfo *)NULL;
+		if(Z_TYPE_PP(ppzval) != IS_ARRAY) {	
 			efree(coordinates);
 			*num_elements = 0;
-			return coordinates;
+			return NULL;
 		}
 
 		/* Subarray should have two elements. X and Y */
@@ -575,10 +664,9 @@ void *get_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
 
 		/* Exactly two elements */
 		if (sub_elements != 2) {
-			*num_elements = 0;
 			efree(coordinates);
-			coordinates = (PointInfo *)NULL;
-			return coordinates;
+			*num_elements = 0;
+			return NULL;
 		}
 
 		/* Subarray values */
@@ -587,9 +675,8 @@ void *get_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
 		/* Get X */
 		if (zend_hash_find(sub_array, "x", sizeof("x"), (void**)&ppz_x) == FAILURE) {
 			efree(coordinates);
-			coordinates = (PointInfo *)NULL;
 			*num_elements = 0;
-			return coordinates;
+			return NULL;
 		}
 		
 		tmp_zx = **ppz_x;
@@ -600,9 +687,8 @@ void *get_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
 		/* Get Y */
 		if (zend_hash_find(sub_array, "y", sizeof("y"), (void**)&ppz_y) == FAILURE) {
 			efree(coordinates);
-			coordinates = (PointInfo *)NULL;
 			*num_elements = 0;
-			return coordinates;
+			return NULL;
 		}	
 		
 		tmp_zy = **ppz_y;
@@ -635,94 +721,65 @@ void count_pixeliterator_rows(php_imagickpixeliterator_object *internpix TSRMLS_
 }
 #endif
 
+int php_imagick_safe_mode_check(const char *filename TSRMLS_DC)
+{
+	if (PG(safe_mode) && (!php_checkuid_ex(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR, CHECKUID_NO_ERRORS))) {
+		return IMAGICK_READ_WRITE_SAFE_MODE_ERROR;
+	}
+	
+	if (PG(open_basedir) && php_check_open_basedir_ex(filename, 0 TSRMLS_CC)) {
+		return IMAGICK_READ_WRITE_OPEN_BASEDIR_ERROR;
+	}
+
+	return IMAGICK_READ_WRITE_NO_ERROR;
+}
+
 /* type 1 = writeimage, type 2 = writeimages */
 int write_image_from_filename(php_imagick_object *intern, char *filename, zend_bool adjoin, int type TSRMLS_DC)
 {
-	int pos = 0, occurances = 0, add_format = 0, error = IMAGICK_READ_WRITE_NO_ERROR;
-	char *buffer, *filepath, c;
 	MagickBooleanType status;
+	int rc, page;
+	char *buffer, *path, *format = NULL;
 
-	occurances = count_occurences_of(':', filename TSRMLS_CC);
-
-#if defined(PHP_WIN32)
-	/* windows can have things like png:C:\test.png */
-	if (occurances > 0) {
-		occurances -= 1;
-	}
-#endif
-
-	if (strlen(filename) > MAXPATHLEN) {
-		return IMAGICK_READ_WRITE_FILENAME_TOO_LONG;
+	path = php_imagick_filename_path(filename, strlen(filename), &format, &page TSRMLS_CC);
+	
+	if (!path) {
+		return IMAGICK_READ_WRITE_UNDERLYING_LIBRARY;
 	}
 
-	/* Assume format in the filename. For example: png:hello.jpg */
-	if (occurances > 0) {
-		buffer = filename;
-		
-		/* Strip everything before the first : */
-		while (((c = *(buffer++)) != '\0') && c != ':') { pos++; };
-		
-		/* This can happen with filename like "png:" */
-		if (buffer == '\0' || strlen(buffer) == 0) {
-			return IMAGICK_READ_WRITE_UNDERLYING_LIBRARY;
+	rc = php_imagick_safe_mode_check(path TSRMLS_CC);
+	if (rc != IMAGICK_READ_WRITE_NO_ERROR) {
+		if (format) {
+			efree(format);
 		}
-		
-		/* Absolute path to the file */
-		filepath = expand_filepath(buffer, NULL TSRMLS_CC);
-	
-		/* Indicate that the final format string will need the format */
-		add_format = 1;
-	} else {
-		filepath = expand_filepath(filename, NULL TSRMLS_CC);
-		add_format = 0;
-	}
-	
-	/* Check safe mode and open basedir */
-	IMAGICK_SAFE_MODE_CHECK(filepath, error);
-	if (error != IMAGICK_READ_WRITE_NO_ERROR) {
-		efree(filepath);
-		return error;
+		efree(path);
+		return rc;
 	}
 
-	/* Bypass a bug in imagemagick. write failure causes a segfault*/
-	error = check_write_access(filepath TSRMLS_CC);
-	if (error != IMAGICK_READ_WRITE_NO_ERROR) {
-		efree(filepath);
-		return error;
-	}
-
-	/* Add the format to the string ? */
-	if (add_format) {
-		char *format = NULL, *tmp_filepath = estrdup(filepath);
-		efree(filepath);
-		filepath = NULL;
-		
-		format = emalloc(pos+1);
-		format[0] = '\0';
-		strncpy(format, filename, pos);
-		
-		spprintf(&filepath, 0, "%s:%s", format, tmp_filepath);
-		efree(tmp_filepath);
+	if (format) {
+		(void) spprintf(&buffer, 0, "%s:%s", format, path);
 		efree(format);
+	} else {
+		buffer = estrdup(path);
 	}
 
-	/* Write image or write images */
 	if (type == 1) {
-		status = MagickWriteImage(intern->magick_wand, filepath);
+		status = MagickWriteImage(intern->magick_wand, buffer);
 	} else {
-		status = MagickWriteImages(intern->magick_wand, filepath, adjoin);
+		status = MagickWriteImages(intern->magick_wand, buffer, adjoin);
 	}
-	efree(filepath);
+
+	efree(path);
+	efree(buffer);	
 
 	/* Write succeded ? */
 	if (status == MagickFalse) {
 		return IMAGICK_READ_WRITE_UNDERLYING_LIBRARY;
 	}
-	
+
 	/* All went well it seems */
 	return IMAGICK_READ_WRITE_NO_ERROR;
 }
-
 
 void initialize_imagick_constants()
 {
@@ -948,7 +1005,7 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("EVALUATE_POISSONNOISE", PoissonNoiseEvaluateOperator);
 	IMAGICK_REGISTER_CONST_LONG("EVALUATE_UNIFORMNOISE", UniformNoiseEvaluateOperator);
 #endif
-#if MagickLibVersion > 0x647
+#if MagickLibVersion > 0x648
 	IMAGICK_REGISTER_CONST_LONG("EVALUATE_COSINE", CosineEvaluateOperator);
 	IMAGICK_REGISTER_CONST_LONG("EVALUATE_SINE", SineEvaluateOperator);
 	IMAGICK_REGISTER_CONST_LONG("EVALUATE_ADDMODULUS", AddModulusEvaluateOperator);
