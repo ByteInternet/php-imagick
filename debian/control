@@ -1,0 +1,23 @@
+Source: php-imagick
+Section: php
+Priority: optional
+Maintainer: Debian PHP Maintainers <pkg-php-maint@lists.alioth.debian.org>
+Uploaders: Guillaume Delacour <gui@iroqwa.org>
+Build-Depends: debhelper (>= 7), php5-dev, libmagickwand-dev, cdbs
+Standards-Version: 3.9.2
+Vcs-Browser: http://git.debian.org/?p=pkg-php/php-imagick.git
+Vcs-Git: git://git.debian.org/pkg-php/php-imagick.git
+Homepage: http://pecl.php.net/package/imagick
+
+Package: php5-imagick
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${php5:Depends}, ucf
+Recommends: ghostscript, ttf-dejavu-core
+Description: ImageMagick module for php5
+ This package provides a wrapper for ImageMagick library
+ directly from PHP scripts.
+ .
+ PHP5 is an HTML-embedded scripting language. Much of its syntax is borrowed
+ from C, Java and Perl with a couple of unique PHP-specific features thrown
+ in. The goal of the language is to allow web developers to write
+ dynamically generated pages quickly.
