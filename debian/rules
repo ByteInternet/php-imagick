@@ -10,7 +10,7 @@ DEB_INSTALL_EXAMPLES_php5-imagick = $(DEB_SRCDIR)/examples/*
 DEB_INSTALL_DOCS_php5-imagick = $(DEB_SRCDIR)/CREDITS
 
 # don't link against unnecessary libraries such as libX11
-LDFLAGS := -Wl,--as-needed $(LDFLAGS)
+export LDFLAGS += -Wl,--as-needed
 
 #
 # local hacks

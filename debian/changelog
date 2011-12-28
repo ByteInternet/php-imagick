@@ -1,3 +1,12 @@
+php-imagick (3.1.0~rc1-1) unstable; urgency=low
+
+  * New upstream release
+  * debian/control: Add Vcs-{Browser,Git} field, point to pkg-php git repo
+  * debian/rules: export LDFLAGS and refresh ltmain.sh.patch
+    to pass -Wl,--as-needed flag to linker at right place (Closes: #652200)
+
+ -- Guillaume Delacour <gui@iroqwa.org>  Wed, 28 Dec 2011 15:30:14 +0100
+
 php-imagick (3.0.1-1) unstable; urgency=low
 
   * New upstream release

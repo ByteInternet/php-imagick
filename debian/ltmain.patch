@@ -1,10 +1,10 @@
---- ltmain.sh.old	2010-06-01 19:21:42.000000000 +0000
-+++ ltmain.sh	2010-06-01 19:23:14.000000000 +0000
-@@ -4716,6 +4716,11 @@
+--- ltmain.sh	2011-11-02 20:05:00.657248724 +0100
++++ /tmp/ltmain.sh	2011-11-02 20:04:38.647228440 +0100
+@@ -5800,6 +5800,11 @@
  	arg=$func_stripname_result
  	;;
  
-+      -Wl,--as-needed)
++      -Wl,--as-needed|-Wl,--no-as-needed)
 +	deplibs="$deplibs $arg"
 +	continue
 +	;;
@@ -12,11 +12,11 @@
        -Wl,*)
  	func_stripname '-Wl,' '' "$arg"
  	args=$func_stripname_result
-@@ -5070,6 +5075,15 @@
+@@ -6163,6 +6168,15 @@
  	lib=
  	found=no
  	case $deplib in
-+	-Wl,--as-needed)
++	-Wl,--as-needed|-Wl,--no-as-needed)
 +	  if test "$linkmode,$pass" = "prog,link"; then
 +	    compile_deplibs="$deplib $compile_deplibs"
 +	    finalize_deplibs="$deplib $finalize_deplibs"
@@ -25,6 +25,6 @@
 +	  fi
 +	  continue
 +	  ;;
- 	-mt|-mthreads|-kthread|-Kthread|-pthread|-pthreads|--thread-safe|-threads)
+ 	-mt|-mthreads|-kthread|-Kthread|-pthread|-pthreads|--thread-safe \
+         |-threads|-fopenmp|-openmp|-mp|-xopenmp|-omp|-qsmp=*)
  	  if test "$linkmode,$pass" = "prog,link"; then
- 	    compile_deplibs="$deplib $compile_deplibs"
