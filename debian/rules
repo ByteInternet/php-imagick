@@ -22,13 +22,7 @@ clean::
 	-cd $(DEB_SRCDIR) && phpize5 --clean
 
 configure_for_php5::
-	# Hack here because:
-	# - we don't want the module linked against some libx* (unused symbols)
-	# We want to link with just needed libraries
-	# - "-Wl,--as-needed" is ignored if not the first argument of the linker
-	# We have to patch the linker call script ltmain.sh
 	cd $(DEB_SRCDIR) && phpize5 && \
-	    patch -p1 < ../debian/ltmain.patch ltmain.sh && \
 	    ./configure --with-imagick --with-php-config=/usr/bin/php-config5 \
 	    --disable-static --with-imagick=shared,/usr
 	sed -e 's/phpX/php5/g' < debian/phpX-imagick.postinst > debian/php5-imagick.postinst
