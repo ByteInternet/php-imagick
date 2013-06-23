@@ -19,11 +19,11 @@ IMPORTANT: Version 2.x API is not compatible with earlier versions.</description
   <email>scottmac@php.net</email>
   <active>yes</active>
  </lead>
- <date>2011-09-04</date>
- <time>01:59:35</time>
+ <date>2012-05-30</date>
+ <time>21:21:12</time>
  <version>
-  <release>3.1.0RC1</release>
-  <api>3.1.0RC1</api>
+  <release>3.1.0RC2</release>
+  <api>3.1.0RC2</api>
  </version>
  <stability>
   <release>beta</release>
@@ -31,9 +31,7 @@ IMPORTANT: Version 2.x API is not compatible with earlier versions.</description
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Fixed PECL Bug #22722
-- Fixed possible memory leaks in error scenarios
-- Added PHP 5.4 support
+- Fixed PHP bug #61879 (Imagick writeImages no longer works with PHP5.4)
  </notes>
  <contents>
   <dir name="/">
@@ -44,17 +42,17 @@ IMPORTANT: Version 2.x API is not compatible with earlier versions.</description
    <file md5sum="0a27af866dc2f8679e10a8730ee35e52" name="config.m4" role="src" />
    <file md5sum="5129ecb45bdbad34a1ca7e1517150122" name="config.w32" role="src" />
    <file md5sum="6077035e65e0b0bbe5a28917282e26b2" name="CREDITS" role="doc" />
-   <file md5sum="080400219cd9175ab3e53ea1479347a4" name="imagick.c" role="src" />
-   <file md5sum="d68e815310b2e9cb09ab170f7b1f0f6b" name="imagick_class.c" role="src" />
-   <file md5sum="f4f1086f937d6d7ea7f4809773a55b5d" name="imagickdraw_class.c" role="src" />
-   <file md5sum="1824b878c4a24ae902b1448d45d7a387" name="imagickpixel_class.c" role="src" />
-   <file md5sum="6cddac0e31deca36b702dc79ad4fe0b9" name="imagickpixeliterator_class.c" role="src" />
-   <file md5sum="f9f043da9d131d3e6b157e5fe96321f2" name="imagick_helpers.c" role="src" />
+   <file md5sum="f6d43bcd821debe31665ad31a35d7c61" name="imagick.c" role="src" />
+   <file md5sum="8f33f73742d41cd5850cff5d81b89b71" name="imagick_class.c" role="src" />
+   <file md5sum="474ba636dac3db8d6b39e7eeb9092a6a" name="imagickdraw_class.c" role="src" />
+   <file md5sum="454b683b777089034725379a0fff4ef4" name="imagickpixel_class.c" role="src" />
+   <file md5sum="af20cdb3beadc3273781ded6642f01ad" name="imagickpixeliterator_class.c" role="src" />
+   <file md5sum="5aba077d70b45348f83757959b00f4d6" name="imagick_helpers.c" role="src" />
    <file md5sum="b62de61036b4a2f5f1f17798faac4dbd" name="imagick_file.c" role="src" />
-   <file md5sum="aba76db637aab222c8bcb731420949e9" name="php_imagick.h" role="src">
+   <file md5sum="73d3f4e8525e540f4b85dc5570dc9556" name="php_imagick.h" role="src">
     <tasks:replace from="@PACKAGE_VERSION@" to="version" type="package-info" />
    </file>
-   <file md5sum="40412cd287f0a995f009ec4d98d9679a" name="php_imagick_defs.h" role="src" />
+   <file md5sum="497fc5d7242b71916415192f958ec8a1" name="php_imagick_defs.h" role="src" />
    <file md5sum="fb77fb5fc5b9b2b864af1d587a2d998c" name="php_imagick_helpers.h" role="src" />
    <file md5sum="75771f358bb99fd39ba81dbae0934a7c" name="php_imagick_macros.h" role="src" />
    <file md5sum="a3028f4371268f32d9eb5c9d858a8e7c" name="php_imagick_shared.h" role="src" />
