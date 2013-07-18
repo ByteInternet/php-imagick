@@ -1,9 +1,11 @@
 php-imagick (3.1.0~rc2-1) unstable; urgency=low
 
   * Disable ltmain.sh patch since it cannot be applied cleanly on all Ubuntus
+  * Update patches to RC2
+  * Update imagick to use dh_php5 and dh_phppear (Closes: #717214)
   * Imported Upstream version 3.1.0~rc2
 
- -- Ondřej Surý <ondrej@debian.org>  Wed, 28 Nov 2012 11:16:50 +0100
+ -- Ondřej Surý <ondrej@debian.org>  Thu, 18 Jul 2013 15:24:47 +0200
 
 php-imagick (3.1.0~rc1-1) unstable; urgency=low
 
