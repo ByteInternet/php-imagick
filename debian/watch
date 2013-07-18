@@ -1,3 +1,3 @@
 version=3
-opts="uversionmangle=s/RC/rc/,dversionmangle=s/~//" \
-	http://pecl.php.net/package/imagick /get/imagick-(.+)\.tgz
+opts=uversionmangle=s/(\d)RC(\d*)$/$1rc$2/;s/(\d)[_\.\-\+]?((RC|rc|pre|dev|beta|alpha|b|a)[\-\.]?\d*)$/$1~$2/ \
+http://pecl.php.net/package/imagick .*/imagick-(\d.*)\.(?:tgz|tbz2|txz|tar\.(?:gz|bz2|xz))
