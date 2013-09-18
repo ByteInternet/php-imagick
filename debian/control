@@ -1,8 +1,8 @@
 Source: php-imagick
 Section: php
 Priority: optional
-Maintainer: Debian PHP Maintainers <pkg-php-maint@lists.alioth.debian.org>
-Uploaders: Guillaume Delacour <gui@iroqwa.org>
+Maintainer: Debian PHP PEAR Maintainers <pkg-php-pear@lists.alioth.debian.org>
+Uploaders: Guillaume Delacour <gui@iroqwa.org>, Lior Kaplan <kaplan@debian.org>
 Build-Depends: debhelper (>= 9),
 	       php5-dev (>= 5.5),
 	       dh-php5,

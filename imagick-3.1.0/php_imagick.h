@@ -2,7 +2,7 @@
    +----------------------------------------------------------------------+
    | PHP Version 5 / Imagick	                                          |
    +----------------------------------------------------------------------+
-   | Copyright (c) 2006-2009 Mikko Koppanen, Scott MacVicar               |
+   | Copyright (c) 2006-2013 Mikko Koppanen, Scott MacVicar               |
    | Imagemagick (c) ImageMagick Studio LLC                               |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
@@ -23,8 +23,8 @@
 
 /* Define Extension Properties */
 #define PHP_IMAGICK_EXTNAME    "imagick"
-#define PHP_IMAGICK_VERSION    "3.1.0RC2"
-#define PHP_IMAGICK_EXTNUM     30001
+#define PHP_IMAGICK_VERSION    "3.1.0"
+#define PHP_IMAGICK_EXTNUM     30100
 
 /* Import configure options when building 
    outside of the PHP source tree */
