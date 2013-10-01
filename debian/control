@@ -9,8 +9,8 @@ Build-Depends: debhelper (>= 9),
 	       pkg-php-tools,
 	       libmagickwand-dev
 Standards-Version: 3.9.4
-Vcs-Browser: http://git.debian.org/?p=pkg-php/php-imagick.git
-Vcs-Git: git://git.debian.org/pkg-php/php-imagick.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-php/php-imagick.git
+Vcs-Git: git://anonscm.debian.org/pkg-php/php-imagick.git
 Homepage: http://pecl.php.net/package/imagick
 
 Package: php5-imagick

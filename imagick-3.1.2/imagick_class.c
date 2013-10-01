@@ -3607,7 +3607,7 @@ PHP_METHOD(imagick, newpseudoimage)
 	MagickBooleanType status;
 	long columns, rows;
 	char *pseudo_string;
-	int pseudo_string_len;
+	int pseudo_string_len, rc;
 	struct php_imagick_file_t file = {0};
 	
 	/* Parse parameters given to function */
@@ -3633,10 +3633,10 @@ PHP_METHOD(imagick, newpseudoimage)
 	if (!php_imagick_file_init(&file, pseudo_string, pseudo_string_len TSRMLS_CC)) {
 		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "The filename is too long", 1);
 	}
-	status = php_imagick_read_file(intern, &file, ImagickReadImage TSRMLS_CC);
+	rc = php_imagick_read_file(intern, &file, ImagickReadImage TSRMLS_CC);
 	php_imagick_file_deinit(&file);
 
-	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, pseudo_string, status, IMAGICK_DONT_FREE_FILENAME, "Unable to create new pseudo image: %s");
+	IMAGICK_CHECK_READ_OR_WRITE_ERROR(intern, pseudo_string, rc, IMAGICK_DONT_FREE_FILENAME, "Unable to create new pseudo image: %s");
 	RETURN_TRUE;
 }
 /* }}} */
@@ -6629,19 +6629,72 @@ PHP_METHOD(imagick, getimagemimetype)
 }
 /* }}} */
 
+
+static
+void s_add_assoc_str (zval *array, const char *key, const char *value, int copy)
+{
+    add_assoc_string (array, key, value ? value : "", copy);
+}
+
+static
+void s_add_named_strings (zval *array, const char *haystack TSRMLS_DC)
+{
+	int done = 0;
+	char *line, *last_ptr = NULL, *buffer;
+	size_t num_keys;
+
+	const char *str_keys [] = {
+		"Format: ",
+		"Units: ",
+		"Type: ",
+		"Colorspace: ",
+		"Filesize: ",
+		"Compression: "
+	};
+
+	const char *arr_keys [] = {
+		"format",
+		"units",
+		"type",
+		"colorSpace",
+		"fileSize",
+		"compression"
+	};
+
+	buffer = estrdup (haystack);
+
+	num_keys = sizeof (str_keys) / sizeof (str_keys[0]);
+	line = php_strtok_r (buffer, "\r\n", &last_ptr);
+
+	int i, found = 0;
+	while ((found < num_keys) && line) {
+		// Break the line further into tokens
+		char *trim = php_trim (line, strlen(line), NULL, 0, NULL, 3 TSRMLS_CC);
+
+		for (i = 0; i < num_keys; i++) {
+			if (strncmp (trim, str_keys [i], strlen (str_keys [i])) == 0) {
+				// This should be our line
+				add_assoc_string (array, arr_keys [i], trim + strlen (str_keys [i]), 1);
+				found++;
+			}
+		}
+		efree (trim);
+		line = php_strtok_r (NULL, "\r\n", &last_ptr);
+	}
+	efree (buffer);
+}
+
 /* {{{ proto array Imagick::identifyImage([bool appendRawOutput] )
 	Identifies an image and returns the attributes.  Attributes include the image width, height, size, and others.
 	If true is passed as argument, then the raw output is appended to the array.
 */
-/* FIX THIS WHOLE FUNCTION */
 PHP_METHOD(imagick, identifyimage)
 {
+	char *format, *identify, *filename, *signature;
 	php_imagick_object *intern;
-	char *identity, *hash_value;
-	HashTable *hash_table;
 	zend_bool append_raw_string = 0;
-	zval  *delim, *zident, *array, **ppzval, tmpcopy;
-	long newlines, i, elements;
+	zval *array;
+    double x, y;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|b", &append_raw_string) == FAILURE) {
@@ -6651,86 +6704,59 @@ PHP_METHOD(imagick, identifyimage)
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
 
-	identity = MagickIdentifyImage(intern->magick_wand);
+	// This is to parse some string options, ugly hack but easier than using CommandOptionToMNemonic
+	// or MagickOptionToMnemonic and FormatMagickSize, which have changed names and signatures between
+	// versions that we support
+	identify = MagickIdentifyImage (intern->magick_wand);
 
-	/* Explode on newlines */
-	MAKE_STD_ZVAL(delim);
-	ZVAL_STRING(delim, "\n", 0);
-
-	/* Create zval from identity */
-	MAKE_STD_ZVAL(zident);
-	ZVAL_STRING(zident, identity, 0);
-
-	/* Initialize empty array */
-	MAKE_STD_ZVAL(array);
-	array_init(array);
-
-	/* count occurances and get that amount of elements */
-	newlines = count_occurences_of('\n', identity TSRMLS_CC);
-	php_explode(delim, zident, array, newlines);
-
-	/* free useless values */
-	FREE_ZVAL(zident);
-	FREE_ZVAL(delim);
-
-	/* initialize return value and get hash table */
+	// Actually generate the array ourselves
 	array_init(return_value);
-	hash_table = Z_ARRVAL_P(array);
 
-	elements = zend_hash_num_elements(hash_table);
+    // Name of the image
+	filename = MagickGetImageFilename (intern->magick_wand);
+	s_add_assoc_str (return_value, "imageName", filename, 1);
+	s_add_named_strings (return_value, identify TSRMLS_CC);
 
-	if (elements == 0) {
-		zval_dtor(array);
-		FREE_ZVAL(array);
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICK_CLASS, "Identifying image failed", 1);
+	format = MagickGetImageFormat (intern->magick_wand);
+	if (format) {
+		char *mime_type = MagickToMime(format);
+		if (mime_type) {
+			s_add_assoc_str (return_value, "mimetype", mime_type, 1);
+			IMAGICK_FREE_MEMORY(char *, mime_type);
+		} else
+			s_add_assoc_str (return_value, "mimetype", "unknown", 1);
+
+		IMAGICK_FREE_MEMORY(char *, format);
 	}
+	else
+		s_add_assoc_str (return_value, "mimetype", "unknown", 1);
 
-	zend_hash_internal_pointer_reset_ex(hash_table, (HashPosition *) 0);
 
-	for (i = 0 ; i < elements ; i++) {
+	// Geometry is an associative array
+	MAKE_STD_ZVAL (array);
+	array_init (array);
 
-		if (zend_hash_get_current_data(hash_table, (void**)&ppzval) == FAILURE) {
-			
-			continue;
+	add_assoc_long (array, "width", MagickGetImageWidth (intern->magick_wand));
+	add_assoc_long (array, "height", MagickGetImageHeight (intern->magick_wand));
+	add_assoc_zval (return_value, "geometry", array);
 
-		} else {
+	if (MagickGetImageResolution(intern->magick_wand, &x, &y) == MagickTrue) {
+	    MAKE_STD_ZVAL (array);
+	    array_init (array);
 
-			tmpcopy = **ppzval;
-			zval_copy_ctor(&tmpcopy);
-	
-			INIT_PZVAL(&tmpcopy);
-			convert_to_string(&tmpcopy);
-	
-			hash_value = php_trim(Z_STRVAL(tmpcopy ), Z_STRLEN(tmpcopy ), (char *)NULL, 0, NULL, 3 TSRMLS_CC);
-	
-			zval_dtor(&tmpcopy);
-			zend_hash_move_forward(hash_table);
-		}
-
-		/* It would be pain in the ass (yes, in my ass. ) to parse all the values */
-		add_assoc_string_helper(return_value, "Image: ", "imageName", hash_value TSRMLS_CC);
-		add_assoc_string_helper(return_value, "Format: ", "format", hash_value TSRMLS_CC);
-		add_assoc_string_helper(return_value, "Geometry: ", "geometry", hash_value TSRMLS_CC);
-		add_assoc_string_helper(return_value, "Units: ", "units", hash_value TSRMLS_CC);
-		add_assoc_string_helper(return_value, "Type: ", "type", hash_value TSRMLS_CC);
-		add_assoc_string_helper(return_value, "Resolution: ", "resolution", hash_value TSRMLS_CC);
-		add_assoc_string_helper(return_value, "Colorspace: ", "colorSpace", hash_value TSRMLS_CC);
-		add_assoc_string_helper(return_value, "Filesize: ", "fileSize", hash_value TSRMLS_CC);
-		add_assoc_string_helper(return_value, "Compression: ", "compression", hash_value TSRMLS_CC);
-		add_assoc_string_helper(return_value, "Signature: ", "signature", hash_value TSRMLS_CC);
-
-		efree(hash_value);
+	    add_assoc_double (array, "x", x);
+	    add_assoc_double (array, "y", y);
+	    add_assoc_zval (return_value, "resolution", array);
 	}
+	signature = MagickGetImageSignature (intern->magick_wand);
+	s_add_assoc_str (return_value, "signature", signature, 1);
 
-	/* if user wants raw string append it */
-	if (append_raw_string == 1) {
-		add_assoc_string(return_value, "rawOutput", identity, 1);
-	}
+	if (append_raw_string == 1)
+		add_assoc_string (return_value, "rawOutput", identify, 1);
 
-	zval_dtor(array);			 /* let it fly free.. */
-	FREE_ZVAL(array);
-
-	IMAGICK_FREE_MEMORY(char *, identity);
+	IMAGICK_FREE_MEMORY(char *, filename);
+	IMAGICK_FREE_MEMORY(char *, identify);
+	IMAGICK_FREE_MEMORY(char *, signature);
 	return;
 }
 /* }}} */

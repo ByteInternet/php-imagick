@@ -1,3 +1,9 @@
+php-imagick (3.1.2-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Lior Kaplan <kaplan@debian.org>  Tue, 01 Oct 2013 14:19:06 +0200
+
 php-imagick (3.1.0-1) unstable; urgency=low
 
   * New upstream release
