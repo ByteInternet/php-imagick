@@ -31,7 +31,7 @@ PHP_METHOD(imagickdraw, resetvectorgraphics)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -50,7 +50,7 @@ PHP_METHOD(imagickdraw, gettextkerning)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -84,7 +84,7 @@ PHP_METHOD(imagickdraw, gettextinterwordspacing)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -120,7 +120,7 @@ PHP_METHOD(imagickdraw, gettextinterlinespacing)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
@@ -304,7 +304,8 @@ PHP_METHOD(imagickdraw, setfillcolor)
 {
 	zval *param;
 	php_imagickdraw_object *internd;
-	php_imagickpixel_object *internp;
+	PixelWand *color_wand;
+	zend_bool allocated;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &param) == FAILURE) {
 		return;
@@ -312,8 +313,13 @@ PHP_METHOD(imagickdraw, setfillcolor)
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	IMAGICK_CAST_PARAMETER_TO_COLOR(param, internp, 2);
-	DrawSetFillColor(internd->drawing_wand, internp->pixel_wand);
+	color_wand = php_imagick_zval_to_pixelwand (param, IMAGICKDRAW_CLASS, &allocated TSRMLS_CC);
+	if (!color_wand)
+		return;
+
+	DrawSetFillColor(internd->drawing_wand, color_wand);
+	if (allocated)
+		color_wand = DestroyPixelWand (color_wand);
 
 	RETURN_TRUE;
 }
@@ -324,7 +330,7 @@ PHP_METHOD(imagickdraw, setfillcolor)
 */
 PHP_METHOD(imagickdraw, setresolution)
 {
-	char *density, buf[512];
+	char *density, *buf = NULL;
 	double x, y;
 	php_imagickdraw_object *internd;
 	DrawInfo *draw_info;
@@ -336,23 +342,26 @@ PHP_METHOD(imagickdraw, setresolution)
 
 	internd = (php_imagickdraw_object *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	(void) snprintf(buf, 512, "%fx%f", x, y);
+	spprintf(&buf, 512, "%fx%f", x, y);
 	density = AcquireString(buf);
+	efree (buf);
 
 	if (!density) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Failed to allocate memory", 2);
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Failed to allocate memory" TSRMLS_CC);
+		return;
 	}
 
 	draw_info          = PeekDrawingWand(internd->drawing_wand);
 	draw_info->density = density;
-	
+
 	d_wand = (DrawingWand *) DrawAllocateWand(draw_info, NULL);
-	
+
 	if (!d_wand) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Failed to allocate new DrawingWand structure", 2);
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Failed to allocate new DrawingWand structure" TSRMLS_CC);
+		return;
 	}
-	
-	IMAGICKDRAW_REPLACE_DRAWINGWAND(internd, d_wand);
+
+	php_imagick_replace_drawingwand(internd, d_wand);
 	RETURN_TRUE;
 }
 /* }}} */
@@ -364,7 +373,8 @@ PHP_METHOD(imagickdraw, setstrokecolor)
 {
 	zval *param;
 	php_imagickdraw_object *internd;
-	php_imagickpixel_object *internp;
+	PixelWand *color_wand;
+	zend_bool allocated;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &param) == FAILURE) {
 		return;
@@ -372,8 +382,13 @@ PHP_METHOD(imagickdraw, setstrokecolor)
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	IMAGICK_CAST_PARAMETER_TO_COLOR(param, internp, 2);
-	DrawSetStrokeColor(internd->drawing_wand, internp->pixel_wand);
+	color_wand = php_imagick_zval_to_pixelwand (param, IMAGICKDRAW_CLASS, &allocated TSRMLS_CC);
+	if (!color_wand)
+		return;
+
+	DrawSetStrokeColor(internd->drawing_wand, color_wand);
+	if (allocated)
+		color_wand = DestroyPixelWand (color_wand);
 
 	RETURN_TRUE;
 }
@@ -395,7 +410,11 @@ PHP_METHOD(imagickdraw, setfillalpha)
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
+#if MagickLibVersion >= 0x635
+	DrawSetFillOpacity(internd->drawing_wand, opacity);
+#else
 	DrawSetFillAlpha(internd->drawing_wand, opacity);
+#endif
 	RETURN_TRUE;
 }
 /* }}} */
@@ -420,7 +439,10 @@ PHP_METHOD(imagickdraw, settextantialias)
 /* }}} */
 
 /* {{{ proto bool ImagickDraw::setTextEncoding(string encoding)
-	Specifies specifies the code set to use for text annotations. The only character encoding which may be specified at this time is "UTF-8" for representing Unicode as a sequence of bytes. Specify an empty string to set text encoding to the system's default. Successful text annotation using Unicode may require fonts designed to support Unicode.
+	Specifies specifies the code set to use for text annotations.
+	The only character encoding which may be specified at this time is "UTF-8" for representing Unicode as a sequence of bytes.
+	Specify an empty string to set text encoding to the system's default. 
+	Successful text annotation using Unicode may require fonts designed to support Unicode.
 */
 PHP_METHOD(imagickdraw, settextencoding)
 {
@@ -455,7 +477,11 @@ PHP_METHOD(imagickdraw, setstrokealpha)
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
+#if MagickLibVersion >= 0x635
+	DrawSetStrokeOpacity(internd->drawing_wand, opacity);
+#else
 	DrawSetStrokeAlpha(internd->drawing_wand, opacity);
+#endif
 	RETURN_TRUE;
 }
 /* }}} */
@@ -486,8 +512,9 @@ PHP_METHOD(imagickdraw, setfont)
 {
 	php_imagickdraw_object *internd;
 	char *font, *absolute;
-	int font_len, error = 0;
+	int font_len;
 	MagickBooleanType status;
+	php_imagick_rw_result_t rc;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &font, &font_len) == FAILURE) {
@@ -496,30 +523,27 @@ PHP_METHOD(imagickdraw, setfont)
 
 	/* Check that no empty string is passed */
 	if (font_len == 0) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Can not set empty font", 2);
+		php_imagick_throw_exception (IMAGICKDRAW_CLASS, "Can not set empty font" TSRMLS_CC);
+		return;
 	}
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
 	/* And if it wasn't */
-	if (!check_configured_font(font, font_len TSRMLS_CC )) {
+	if (!php_imagick_check_font(font, font_len TSRMLS_CC)) {
 
-		if (!(absolute = expand_filepath(font, NULL TSRMLS_CC))) {
-			IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Unable to set font", 2);
-		}
-
-		/* Do a safe-mode check for the font */
-		IMAGICK_SAFE_MODE_CHECK(absolute, error);
-		IMAGICKDRAW_CHECK_READ_OR_WRITE_ERROR(internd, absolute, error, IMAGICK_FREE_FILENAME);
-
-		if (VCWD_ACCESS(absolute, F_OK|R_OK )) {
-			zend_throw_exception_ex(php_imagickdraw_exception_class_entry, 2 TSRMLS_CC,
-				"The given font is not found in the ImageMagick configuration and the file (%s) is not accessible", absolute);
-
-			efree(absolute);
+		if ((absolute = expand_filepath(font, NULL TSRMLS_CC)) == NULL) {
+			php_imagick_throw_exception (IMAGICKDRAW_CLASS, "Unable to set font, file path expansion failed" TSRMLS_CC);
 			return;
 		}
 
+		/* Do an access check for the font */
+		if ((rc = php_imagick_file_access_check (absolute TSRMLS_CC)) != IMAGICK_RW_OK) {
+			// Failed
+			php_imagick_imagickdraw_rw_fail_to_exception (internd->drawing_wand, rc, absolute TSRMLS_CC);
+			efree(absolute);
+			return;
+		}
 		status = DrawSetFont(internd->drawing_wand, absolute);
 		efree(absolute);
 
@@ -527,9 +551,9 @@ PHP_METHOD(imagickdraw, setfont)
 		status = DrawSetFont(internd->drawing_wand, font);
 	}
 
-	/* No magick is going to happen */
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to set font", 1);
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to set font" TSRMLS_CC);
+		return;
 	}
 
 	RETURN_TRUE;
@@ -553,19 +577,21 @@ PHP_METHOD(imagickdraw, setfontfamily)
 
 	/* Check that no empty string is passed */
 	if (font_family_len == 0) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Can not set empty font family", 2);
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Can not set empty font family" TSRMLS_CC);
+		return;
 	}
 
-	if (!check_configured_font(font_family, font_family_len TSRMLS_CC )) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Unable to set font family; parameter not found in the list of configured fonts", 2);
+	if (!php_imagick_check_font(font_family, font_family_len TSRMLS_CC )) {
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Unable to set font family; parameter not found in the list of configured fonts" TSRMLS_CC);
+		return;
 	}
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	status = DrawSetFontFamily(internd->drawing_wand, font_family);
 
-	/* No magick is going to happen */
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to set font family", 1);
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to set font family" TSRMLS_CC);
+		return;
 	}
 
 	RETURN_TRUE;
@@ -626,15 +652,12 @@ PHP_METHOD(imagickdraw, setfontweight)
 	}
 
 	if (weight >= 100 && weight <= 900) {
-
 		internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
-
 		DrawSetFontWeight(internd->drawing_wand, weight);
 		RETURN_TRUE;
-
-	} else {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Font weight valid range is 100-900", 2);
 	}
+	php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Font weight valid range is 100-900" TSRMLS_CC);
+	return;
 }
 /* }}} */
 
@@ -739,7 +762,8 @@ PHP_METHOD(imagickdraw, settextundercolor)
 {
 	zval *param;
 	php_imagickdraw_object *internd;
-	php_imagickpixel_object *internp;
+	PixelWand *color_wand;
+	zend_bool allocated;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &param) == FAILURE) {
 		return;
@@ -747,8 +771,13 @@ PHP_METHOD(imagickdraw, settextundercolor)
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	IMAGICK_CAST_PARAMETER_TO_COLOR(param, internp, 2);
-	DrawSetTextUnderColor(internd->drawing_wand, internp->pixel_wand);
+	color_wand = php_imagick_zval_to_pixelwand (param, IMAGICKDRAW_CLASS, &allocated TSRMLS_CC);
+	if (!color_wand)
+		return;
+
+	DrawSetTextUnderColor(internd->drawing_wand, color_wand);
+	if (allocated)
+		color_wand = DestroyPixelWand (color_wand);
 
 	RETURN_TRUE;
 }
@@ -781,7 +810,7 @@ PHP_METHOD(imagickdraw, getfont)
 	php_imagickdraw_object *internd;
 	char *font;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
@@ -793,7 +822,7 @@ PHP_METHOD(imagickdraw, getfont)
 		RETURN_FALSE;
 	} else {
 		ZVAL_STRING(return_value, font, 1);
-		IMAGICK_FREE_MEMORY(char *, font);
+		IMAGICK_FREE_MAGICK_MEMORY(font);
 		return;
 	}
 }
@@ -807,7 +836,7 @@ PHP_METHOD(imagickdraw, getfontfamily)
 	php_imagickdraw_object *internd;
 	char *font_family;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
@@ -818,7 +847,7 @@ PHP_METHOD(imagickdraw, getfontfamily)
 		RETURN_FALSE;
 	} else {
 		ZVAL_STRING(return_value, font_family, 1);
-		IMAGICK_FREE_MEMORY(char *, font_family);
+		IMAGICK_FREE_MAGICK_MEMORY(font_family);
 		return;
 	}
 }
@@ -832,7 +861,7 @@ PHP_METHOD(imagickdraw, getfontsize)
 	php_imagickdraw_object *internd;
 	double font_size;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
@@ -852,7 +881,7 @@ PHP_METHOD(imagickdraw, getfontstyle)
 	php_imagickdraw_object *internd;
 	long font_style;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
@@ -872,7 +901,7 @@ PHP_METHOD(imagickdraw, getfontweight)
 	php_imagickdraw_object *internd;
 	long weight;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
@@ -891,16 +920,11 @@ PHP_METHOD(imagickdraw, clear)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
-
-	if (!internd->drawing_wand) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "ImagickDraw object is not allocated properly", 2);
-	}
-
 	ClearDrawingWand(internd->drawing_wand);
 	RETURN_TRUE;
 }
@@ -914,7 +938,7 @@ PHP_METHOD(imagickdraw, gettextdecoration)
 	php_imagickdraw_object *internd;
 	long decoration;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
@@ -934,10 +958,10 @@ PHP_METHOD(imagickdraw, gettextencoding)
 	php_imagickdraw_object *internd;
 	char *encoding;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
+
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	encoding = DrawGetTextEncoding(internd->drawing_wand);
 
@@ -945,33 +969,9 @@ PHP_METHOD(imagickdraw, gettextencoding)
 		RETURN_FALSE;
 	} else {
 		ZVAL_STRING(return_value, encoding, 1);
-		IMAGICK_FREE_MEMORY(char *, encoding);
+		IMAGICK_FREE_MAGICK_MEMORY(encoding);
 		return;
 	}
-}
-/* }}} */
-
-/* {{{ proto bool ImagickDraw::destroy()
-	Frees all resources associated with the drawing wand.
-*/
-PHP_METHOD(imagickdraw, destroy)
-{
-	zval *object;
-	php_imagickdraw_object *internd;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
-		return;
-	}
-	
-	object = getThis();
-	internd = (php_imagickdraw_object *)zend_object_store_get_object(object TSRMLS_CC);
-
-	if (!internd->drawing_wand) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "ImagickDraw object is not allocated properly", 2);
-	}
-
-	ClearDrawingWand(internd->drawing_wand);
-	RETURN_TRUE;
 }
 /* }}} */
 
@@ -999,7 +999,8 @@ PHP_METHOD(imagickdraw, annotation)
 
 	/* Fixes PECL Bug #11328 */
 	if (!font) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Font needs to be set before annotating an image", 2);
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Font needs to be set before annotating an image" TSRMLS_CC);
+		return;
 	}
 #endif
 
@@ -1064,10 +1065,11 @@ PHP_METHOD(imagickdraw, polygon)
 		return;
 	}
 
-	coordinates = get_pointinfo_array(coordinate_array, &num_elements TSRMLS_CC);
+	coordinates = php_imagick_zval_to_pointinfo_array(coordinate_array, &num_elements TSRMLS_CC);
 
 	if (!coordinates) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Unable to read coordinate array", 2);
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Unable to read coordinate array" TSRMLS_CC);
+		return;
 	}
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
@@ -1094,10 +1096,11 @@ PHP_METHOD(imagickdraw, bezier)
 		return;
 	}
 
-	coordinates = get_pointinfo_array(coordinate_array, &num_elements TSRMLS_CC);
+	coordinates = php_imagick_zval_to_pointinfo_array(coordinate_array, &num_elements TSRMLS_CC);
 
 	if (!coordinates) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Unable to read coordinate array", 2);
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Unable to read coordinate array" TSRMLS_CC);
+		return;
 	}
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
@@ -1156,18 +1159,23 @@ PHP_METHOD(imagickdraw, clone)
 	php_imagickdraw_object *internd, *intern_return;
 	DrawingWand *tmp_wand;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
+
 	IMAGICK_METHOD_DEPRECATED("ImagickDraw", "clone");
-	
+
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	tmp_wand = CloneDrawingWand(internd->drawing_wand);
 
+	if (!tmp_wand) {
+		php_imagick_throw_exception (IMAGICK_CLASS, "Failed to allocate DrawingWand structure" TSRMLS_CC);
+		return;
+	}
+
 	object_init_ex(return_value, php_imagickdraw_sc_entry);
 	intern_return = (php_imagickdraw_object *)zend_object_store_get_object(return_value TSRMLS_CC);
-	IMAGICKDRAW_REPLACE_DRAWINGWAND(intern_return, tmp_wand);
+	php_imagick_replace_drawingwand(intern_return, tmp_wand);
 
 	return;
 }
@@ -1202,9 +1210,9 @@ PHP_METHOD(imagickdraw, affine)
 
 		if (zend_hash_find(affine, matrix_elements[i], 3, (void**)&ppzval) == FAILURE) {
 			efree(pmatrix);
-			IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "AffineMatrix should contain keys: sx, rx, ry, sy, tx and ty", 2);
+			php_imagick_throw_exception(IMAGICKDRAW_CLASS, "AffineMatrix must contain keys: sx, rx, ry, sy, tx and ty" TSRMLS_CC);
+			return;
 		} else {
-			
 			zval tmp_zval, *tmp_pzval;
 
 			tmp_zval = **ppzval;
@@ -1257,13 +1265,16 @@ PHP_METHOD(imagickdraw, composite)
 	}
 
 	intern = (php_imagick_object *) zend_object_store_get_object(magick_obj TSRMLS_CC);
-	IMAGICK_CHECK_NOT_EMPTY(intern->magick_wand, 1, 1);
+
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
 
 	internd = (php_imagickdraw_object *) zend_object_store_get_object(getThis() TSRMLS_CC);
 	status = DrawComposite(internd->drawing_wand, compose, x, y, width, height, intern->magick_wand);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to composite", 2);
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Compositing image failed" TSRMLS_CC);
+		return;
 	}
 
 	RETURN_TRUE;
@@ -1320,7 +1331,7 @@ PHP_METHOD(imagickdraw, getclippath)
 	php_imagickdraw_object *internd;
 	char *clip_path;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1331,7 +1342,7 @@ PHP_METHOD(imagickdraw, getclippath)
 		RETURN_FALSE;
 	} else {
 		ZVAL_STRING(return_value, clip_path, 1);
-		IMAGICK_FREE_MEMORY(char *, clip_path);
+		IMAGICK_FREE_MAGICK_MEMORY(clip_path);
 		return;
 	}
 }
@@ -1345,7 +1356,7 @@ PHP_METHOD(imagickdraw, getcliprule)
 	php_imagickdraw_object *internd;
 	long clip_rule;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1364,7 +1375,7 @@ PHP_METHOD(imagickdraw, getclipunits)
 	php_imagickdraw_object *internd;
 	long units;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1384,7 +1395,7 @@ PHP_METHOD(imagickdraw, getfillcolor)
 	php_imagickdraw_object *internd;
 	PixelWand *tmp_wand;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1395,7 +1406,7 @@ PHP_METHOD(imagickdraw, getfillcolor)
 
 	object_init_ex(return_value, php_imagickpixel_sc_entry);
 	internp = (php_imagickpixel_object *) zend_object_store_get_object(return_value TSRMLS_CC);
-	IMAGICKPIXEL_REPLACE_PIXELWAND(internp, tmp_wand);
+	php_imagick_replace_pixelwand(internp, tmp_wand);
 
 	return;
 }
@@ -1409,7 +1420,7 @@ PHP_METHOD(imagickdraw, getfillopacity)
 	php_imagickdraw_object *internd;
 	double opacity;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1428,7 +1439,7 @@ PHP_METHOD(imagickdraw, getfillrule)
 	php_imagickdraw_object *internd;
 	long fill_rule;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1447,7 +1458,7 @@ PHP_METHOD(imagickdraw, getgravity)
 	php_imagickdraw_object *internd;
 	long gravity;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 
@@ -1466,7 +1477,7 @@ PHP_METHOD(imagickdraw, getstrokeantialias)
 	php_imagickdraw_object *internd;
 	MagickBooleanType status;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1490,7 +1501,7 @@ PHP_METHOD(imagickdraw, getstrokecolor)
 	php_imagickdraw_object *internd;
 	PixelWand *tmp_wand;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1501,7 +1512,7 @@ PHP_METHOD(imagickdraw, getstrokecolor)
 
 	object_init_ex(return_value, php_imagickpixel_sc_entry);
 	internp = (php_imagickpixel_object *) zend_object_store_get_object(return_value TSRMLS_CC);
-	IMAGICKPIXEL_REPLACE_PIXELWAND(internp, tmp_wand);
+	php_imagick_replace_pixelwand(internp, tmp_wand);
 
 	return;
 }
@@ -1516,7 +1527,7 @@ PHP_METHOD(imagickdraw, getstrokedasharray)
 	double *stroke_array;
 	unsigned long num_elements, i;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1529,7 +1540,7 @@ PHP_METHOD(imagickdraw, getstrokedasharray)
 		add_next_index_double(return_value, stroke_array[i]);
 	}
 
-	IMAGICK_FREE_MEMORY(double *, stroke_array);
+	IMAGICK_FREE_MAGICK_MEMORY(stroke_array);
 	return;
 }
 /* }}} */
@@ -1549,10 +1560,11 @@ PHP_METHOD(imagickdraw, setstrokedasharray)
 		return;
 	}
 
-	double_array = get_double_array_from_zval(param_array, &elements TSRMLS_CC);
+	double_array = php_imagick_zval_to_double_array(param_array, &elements TSRMLS_CC);
 
 	if (!double_array) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Can't read array", 2);
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Cannot read stroke dash array parameter" TSRMLS_CC);
+		return;
 	}
 
 	internd = (php_imagickdraw_object *) zend_object_store_get_object(getThis() TSRMLS_CC);
@@ -1572,7 +1584,7 @@ PHP_METHOD(imagickdraw, getstrokedashoffset)
 	php_imagickdraw_object *internd;
 	double offset;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1591,7 +1603,7 @@ PHP_METHOD(imagickdraw, getstrokelinecap)
 	php_imagickdraw_object *internd;
 	long line_cap;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1610,7 +1622,7 @@ PHP_METHOD(imagickdraw, getstrokelinejoin)
 	php_imagickdraw_object *internd;
 	long line_join;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1629,7 +1641,7 @@ PHP_METHOD(imagickdraw, getstrokemiterlimit)
 	php_imagickdraw_object *internd;
 	unsigned long miter_limit;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1648,7 +1660,7 @@ PHP_METHOD(imagickdraw, getstrokeopacity)
 	php_imagickdraw_object *internd;
 	double opacity;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1667,7 +1679,7 @@ PHP_METHOD(imagickdraw, getstrokewidth)
 	php_imagickdraw_object *internd;
 	double width;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1686,7 +1698,7 @@ PHP_METHOD(imagickdraw, gettextalignment)
 	php_imagickdraw_object *internd;
 	long align_type;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1705,7 +1717,7 @@ PHP_METHOD(imagickdraw, gettextantialias)
 	php_imagickdraw_object *internd;
 	MagickBooleanType status;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1728,7 +1740,7 @@ PHP_METHOD(imagickdraw, getvectorgraphics)
 	php_imagickdraw_object *internd;
 	char *vector;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1736,7 +1748,7 @@ PHP_METHOD(imagickdraw, getvectorgraphics)
 	vector = DrawGetVectorGraphics(internd->drawing_wand);
 
 	ZVAL_STRING(return_value, vector, 1);
-	IMAGICK_FREE_MEMORY(char *, vector);
+	IMAGICK_FREE_MAGICK_MEMORY(vector);
 
 	return;
 }
@@ -1751,23 +1763,23 @@ PHP_METHOD(imagickdraw, gettextundercolor)
 	php_imagickdraw_object *internd;
 	PixelWand *tmp_wand;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
-	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
+	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	tmp_wand = NewPixelWand();
-	
+
 	if (!tmp_wand) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Failed to allocate memory", 2);
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Failed to allocate space for new PixelWand" TSRMLS_CC);
+		return;
 	}
-	
+
 	DrawGetTextUnderColor(internd->drawing_wand, tmp_wand);
 
 	object_init_ex(return_value, php_imagickpixel_sc_entry);
 	internp = (php_imagickpixel_object *) zend_object_store_get_object(return_value TSRMLS_CC);
-	IMAGICKPIXEL_REPLACE_PIXELWAND(internp, tmp_wand);
+	php_imagick_replace_pixelwand(internp, tmp_wand);
 
 	return;
 }
@@ -1780,7 +1792,7 @@ PHP_METHOD(imagickdraw, pathclose)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -1999,7 +2011,7 @@ PHP_METHOD(imagickdraw, pathfinish)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -2176,7 +2188,7 @@ PHP_METHOD(imagickdraw, pathstart)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -2201,10 +2213,11 @@ PHP_METHOD(imagickdraw, polyline)
 		return;
 	}
 
-	coordinates = get_pointinfo_array(coordinate_array, &num_elements TSRMLS_CC);
+	coordinates = php_imagick_zval_to_pointinfo_array(coordinate_array, &num_elements TSRMLS_CC);
 
 	if (!coordinates) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKDRAW_CLASS, "Unable to read coordinate array", 2);
+		php_imagick_throw_exception(IMAGICKDRAW_CLASS, "Unable to read coordinate array" TSRMLS_CC);
+		return;
 	}
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
@@ -2223,7 +2236,7 @@ PHP_METHOD(imagickdraw, popclippath)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -2240,7 +2253,7 @@ PHP_METHOD(imagickdraw, popdefs)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -2258,18 +2271,17 @@ PHP_METHOD(imagickdraw, poppattern)
 	php_imagickdraw_object *internd;
 	MagickBooleanType status;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	status = DrawPopPattern(internd->drawing_wand);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to terminate the pattern definition", 2);
-	} else {
-		RETURN_TRUE;
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to terminate the pattern definition" TSRMLS_CC);
+		return;
 	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -2301,7 +2313,7 @@ PHP_METHOD(imagickdraw, pushdefs)
 {
 	php_imagickdraw_object *internd;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -2333,31 +2345,35 @@ PHP_METHOD(imagickdraw, pushpattern)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::render()
+/* {{{ proto bool ImagickDraw::render()
 	Renders all preceding drawing commands.
 */
 PHP_METHOD(imagickdraw, render)
 {
 	php_imagickdraw_object *internd;
 	MagickBooleanType status;
-	char *old_locale = NULL, *buffer = NULL;
-	zend_bool restore = 0;
+	char *old_locale;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
+
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	IMAGICK_SET_LOCALE(old_locale, buffer, restore);
+	old_locale = php_imagick_set_locale (TSRMLS_C);
+
 	status = DrawRender(internd->drawing_wand);
-	IMAGICK_RESTORE_LOCALE(old_locale, restore);
+
+	php_imagick_restore_locale (old_locale);
+
+	if (old_locale)
+		efree (old_locale);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to render the drawing commands", 2);
-	} else {
-		RETURN_TRUE;
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to render the drawing commands" TSRMLS_CC);
+		return;
 	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -2420,10 +2436,10 @@ PHP_METHOD(imagickdraw, setclippath)
 	status = DrawSetClipPath(internd->drawing_wand, clip_mask);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to set clipping path", 2);
-	} else {
-		RETURN_TRUE;
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to set clipping path" TSRMLS_CC);
+		return;
 	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -2488,7 +2504,8 @@ PHP_METHOD(imagickdraw, setfillopacity)
 /* }}} */
 
 /* {{{ proto bool ImagickDraw::setFillPatternURL(string fill_url)
-	Sets the URL to use as a fill pattern for filling objects. Only local URLs ("#identifier") are supported at this time. These local URLs are normally created by defining a named fill pattern with DrawPushPattern/DrawPopPattern.
+	Sets the URL to use as a fill pattern for filling objects. Only local URLs ("#identifier") are supported at this time.
+	These local URLs are normally created by defining a named fill pattern with DrawPushPattern/DrawPopPattern.
 */
 PHP_METHOD(imagickdraw, setfillpatternurl)
 {
@@ -2501,15 +2518,15 @@ PHP_METHOD(imagickdraw, setfillpatternurl)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &url, &url_len) == FAILURE) {
 		return;
 	}
-	
+
 	internd = (php_imagickdraw_object *) zend_object_store_get_object(getThis() TSRMLS_CC);
 	status = DrawSetFillPatternURL(internd->drawing_wand, url);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to set fill pattern URL", 2);
-	} else {
-		RETURN_TRUE;
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to set fill pattern URL" TSRMLS_CC);
+		return;
 	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -2567,15 +2584,15 @@ PHP_METHOD(imagickdraw, setstrokepatternurl)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &url, &url_len) == FAILURE) {
 		return;
 	}
-	
+
 	internd = (php_imagickdraw_object *) zend_object_store_get_object(getThis() TSRMLS_CC);
 	status = DrawSetStrokePatternURL(internd->drawing_wand, url);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to set the stroke pattern URL", 2);
-	} else {
-		RETURN_TRUE;
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to set stroke pattern URL" TSRMLS_CC);
+		return;
 	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -2698,10 +2715,10 @@ PHP_METHOD(imagickdraw, setvectorgraphics)
 	status = DrawSetVectorGraphics(internd->drawing_wand, vector);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to set the vector graphics", 2);
-	} else {
-		RETURN_TRUE;
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to set the vector graphics" TSRMLS_CC);
+		return;
 	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -2713,18 +2730,18 @@ PHP_METHOD(imagickdraw, pop)
 	php_imagickdraw_object *internd;
 	MagickBooleanType status;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
+
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	status = PopDrawingWand(internd->drawing_wand);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to pop the current ImagickDraw object", 2);
-	} else {
-		RETURN_TRUE;
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to pop the current ImagickDraw object" TSRMLS_CC);
+		return;
 	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -2736,18 +2753,18 @@ PHP_METHOD(imagickdraw, push)
 	php_imagickdraw_object *internd;
 	MagickBooleanType status;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
+
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	status = PushDrawingWand(internd->drawing_wand);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKDRAW_EXCEPTION(internd->drawing_wand, "Unable to push the current ImagickDraw object", 2);
-	} else {
-		RETURN_TRUE;
+		php_imagick_convert_imagickdraw_exception (internd->drawing_wand, "Unable to push the current ImagickDraw object" TSRMLS_CC);
+		return;
 	}
+	RETURN_TRUE;
 }
 /* }}} */
 

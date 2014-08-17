@@ -20,21 +20,35 @@
 #ifndef PHP_IMAGICK_DEFS_H /* PHP_IMAGICK_DEFS_H */
 # define PHP_IMAGICK_DEFS_H
 
-/*
-	API exports
-*/
-#ifndef MY_IMAGICK_EXPORTS
-#  ifdef PHP_WIN32
-#    define MY_IMAGICK_EXPORTS __declspec(dllexport)
-#  else
-#    define MY_IMAGICK_EXPORTS PHPAPI
-#  endif
+/* Include magic wand header */
+#if defined (IM_MAGICKWAND_HEADER_STYLE_SEVEN)
+#  include <MagickWand/MagickWand.h>
+#elif defined (IM_MAGICKWAND_HEADER_STYLE_OLD)
+#  include <wand/magick-wand.h>
+#else
+#  include <wand/MagickWand.h>
+#endif
+
+/* Some extra headers */
+#include "Zend/zend_exceptions.h"
+#include "Zend/zend_interfaces.h"
+#include "ext/standard/php_string.h"
+#include "ext/standard/info.h"
+#include "ext/standard/php_filestat.h"
+#include "php_ini.h"
+
+/* Include locale header */
+#ifdef HAVE_LOCALE_H
+# include <locale.h>
 #endif
 
 /* Globals, needed for the ini settings */
 ZEND_BEGIN_MODULE_GLOBALS(imagick)
 	zend_bool locale_fix;
 	zend_bool progress_monitor;
+#ifdef PHP_IMAGICK_ZEND_MM
+	MagickWand *keep_alive;
+#endif
 ZEND_END_MODULE_GLOBALS(imagick)
 
 #ifdef ZTS
@@ -51,6 +65,10 @@ ZEND_EXTERN_MODULE_GLOBALS(imagick)
 # else
 #  define IMAGICK_LC_NUMERIC_LOCALE "C"
 # endif
+#endif
+
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION < 3
+#define zend_parse_parameters_none() zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "")
 #endif
 
 /* Class names */
@@ -71,7 +89,7 @@ typedef struct _php_imagick_object  {
 	zend_object zo;
 	MagickWand *magick_wand;
 	char *progress_monitor_name;
-	int next_out_of_bound;
+	zend_bool next_out_of_bound;
 } php_imagick_object;
 
 /* Structure for ImagickDraw object. */
@@ -84,8 +102,8 @@ typedef struct _php_imagickdraw_object  {
 typedef struct _php_imagickpixeliterator_object  {
 	zend_object zo;
 	PixelIterator *pixel_iterator;
-	long instanciated_correctly;
-	int iterator_type;
+	zend_bool initialized;
+
 #if MagickLibVersion <= 0x628
 	long rows;
 	long iterator_position;
@@ -96,50 +114,43 @@ typedef struct _php_imagickpixeliterator_object  {
 typedef struct _php_imagickpixel_object  {
     zend_object zo;
     PixelWand *pixel_wand;
-	int initialized_via_iterator;
+	zend_bool initialized_via_iterator;
 } php_imagickpixel_object;
 
 /* Define some color constants */
-#define IMAGICKCOLORBLACK 11
-#define IMAGICKCOLORBLUE 12
-#define IMAGICKCOLORCYAN 13
-#define IMAGICKCOLORGREEN 14
-#define IMAGICKCOLORRED 15
-#define IMAGICKCOLORYELLOW 16
-#define IMAGICKCOLORMAGENTA 17
-#define IMAGICKCOLOROPACITY 18
-#define IMAGICKCOLORALPHA 19
-#define IMAGICKCOLORFUZZ 20
+typedef enum _php_imagick_color_t {
+	PHP_IMAGICK_COLOR_MIN = 10,
+	PHP_IMAGICK_COLOR_BLACK,
+	PHP_IMAGICK_COLOR_BLUE,
+	PHP_IMAGICK_COLOR_CYAN,
+	PHP_IMAGICK_COLOR_GREEN,
+	PHP_IMAGICK_COLOR_RED,
+	PHP_IMAGICK_COLOR_YELLOW,
+	PHP_IMAGICK_COLOR_MAGENTA,
+	PHP_IMAGICK_COLOR_OPACITY,
+	PHP_IMAGICK_COLOR_ALPHA,
+	PHP_IMAGICK_COLOR_FUZZ,
+	PHP_IMAGICK_COLOR_MAX,
+} php_imagick_color_t;
 
 /* Class enum */
-#define IMAGICK_CLASS 1
-#define IMAGICKDRAW_CLASS 2
-#define IMAGICKPIXELITERATOR_CLASS 3
-#define IMAGICKPIXEL_CLASS 4
-
-/* Free filename constants */
-#define IMAGICK_DONT_FREE_FILENAME 0
-#define IMAGICK_FREE_FILENAME 1
+typedef enum _php_imagick_class_type_t {
+	IMAGICK_CLASS,
+	IMAGICKDRAW_CLASS,
+	IMAGICKPIXELITERATOR_CLASS,
+	IMAGICKPIXEL_CLASS
+} php_imagick_class_type_t;
 
 /* Read / write constants */
-#define IMAGICK_READ_WRITE_NO_ERROR 0
-#define IMAGICK_READ_WRITE_SAFE_MODE_ERROR 1
-#define IMAGICK_READ_WRITE_OPEN_BASEDIR_ERROR 2
-#define IMAGICK_READ_WRITE_UNDERLYING_LIBRARY 3
-#define IMAGICK_READ_WRITE_PERMISSION_DENIED 4
-#define IMAGICK_READ_WRITE_FILENAME_TOO_LONG 5
-#define IMAGICK_READ_WRITE_PATH_DOES_NOT_EXIST 6
-
-/* Filehandle handling */
-#define IMAGICK_WRITE_IMAGE_FILE 1
-#define IMAGICK_WRITE_IMAGES_FILE 2
-#define IMAGICK_READ_IMAGE_FILE 3
-#define IMAGICK_PING_IMAGE_FILE 4
-
-/* Filename */
-#define PHP_IMAGICK_FILE_PLAIN	1
-#define PHP_IMAGICK_FILE_FORMAT	2
-#define PHP_IMAGICK_FILE_URL	3
+typedef enum _php_imagick_rw_result_t {
+	IMAGICK_RW_OK,
+	IMAGICK_RW_SAFE_MODE_ERROR,
+	IMAGICK_RW_OPEN_BASEDIR_ERROR,
+	IMAGICK_RW_UNDERLYING_LIBRARY,
+	IMAGICK_RW_PERMISSION_DENIED,
+	IMAGICK_RW_FILENAME_TOO_LONG,
+	IMAGICK_RW_PATH_DOES_NOT_EXIST,
+} php_imagick_rw_result_t;
 
 /* Class entries */
 extern zend_class_entry *php_imagick_sc_entry;
@@ -266,15 +277,25 @@ PHP_METHOD(imagick, transformimagecolorspace);
 #if MagickLibVersion > 0x652
 PHP_METHOD(imagick, haldclutimage);
 #endif
+#if MagickLibVersion > 0x655
+PHP_METHOD(imagick, autolevelimage);
+PHP_METHOD(imagick, blueshiftimage);
+#endif
 #if MagickLibVersion > 0x656
 PHP_METHOD(imagick, setimageartifact);
 PHP_METHOD(imagick, getimageartifact);
 PHP_METHOD(imagick, deleteimageartifact);
 PHP_METHOD(imagick, setcolorspace);
 PHP_METHOD(imagick, getcolorspace);
+PHP_METHOD(imagick, clampimage);
 #endif
+#if MagickLibVersion > 0x667
+PHP_METHOD(imagick, smushimages);
+#endif
+
 PHP_METHOD(imagick, __construct);
 PHP_METHOD(imagick, __tostring);
+PHP_METHOD(imagick, count);
 PHP_METHOD(imagick, getpixeliterator);
 PHP_METHOD(imagick, getpixelregioniterator);
 PHP_METHOD(imagick, readimage);
@@ -656,6 +677,8 @@ PHP_METHOD(imagickdraw, push);
 PHP_METHOD(imagickpixeliterator, __construct);
 PHP_METHOD(imagickpixeliterator, newpixeliterator);
 PHP_METHOD(imagickpixeliterator, newpixelregioniterator);
+PHP_METHOD(imagickpixeliterator, getpixeliterator);
+PHP_METHOD(imagickpixeliterator, getpixelregioniterator);
 PHP_METHOD(imagickpixeliterator, getiteratorrow);
 PHP_METHOD(imagickpixeliterator, setiteratorrow);
 PHP_METHOD(imagickpixeliterator, getpreviousiteratorrow);
@@ -683,6 +706,7 @@ PHP_METHOD(imagickpixel, setcolor);
 PHP_METHOD(imagickpixel, clear);
 PHP_METHOD(imagickpixel, destroy);
 PHP_METHOD(imagickpixel, issimilar);
+PHP_METHOD(imagickpixel, ispixelsimilar);
 PHP_METHOD(imagickpixel, getcolorvalue);
 PHP_METHOD(imagickpixel, setcolorvalue);
 PHP_METHOD(imagickpixel, getcolor);
