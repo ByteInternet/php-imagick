@@ -1,3 +1,12 @@
+php-imagick (3.1.2-1.1) unstable; urgency=medium
+
+  * NMU
+  * Fix FTBFS with newer imagemagick. Will ease imagemagick
+    transition. Use pkgconfig instead of hardcoding path in
+    config script (Closes: #747857)
+
+ -- Bastien Roucariès <roucaries.bastien+debian@gmail.com>  Wed, 06 Aug 2014 08:48:06 +0200
+
 php-imagick (3.1.2-1) unstable; urgency=low
 
   * New upstream release

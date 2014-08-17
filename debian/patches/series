@@ -1,1 +1,2 @@
 Hardcode-path-to-usrsharefontstruetypettf-dejavuDejaVuSans.ttf-in-captcha.php.patch
+002-use-pkgconfig-for-imagemagick
