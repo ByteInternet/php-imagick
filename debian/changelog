@@ -13,6 +13,7 @@ php-imagick (3.2.0~rc1-1) unstable; urgency=medium
   * Bump to Standards-Version 3.9.5
   * debian/clean: remove test/*.sh failed tests to re-build the package
     (see debian/TODO)
+  * Update maintainer to PHP PCL Maintainers list
 
  -- Guillaume Delacour <gui@iroqwa.org>  Tue, 02 Sep 2014 10:10:47 +0200
 
