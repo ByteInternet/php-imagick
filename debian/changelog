@@ -6,16 +6,19 @@ php-imagick (3.2.0~rc1-1) unstable; urgency=medium
     drop unused ucf and obsolete ${php5:Depends} in Build-Depends
   * Use ${phppear:summary} and ${phppear:description} for debian/control
     corresponding fields
-  * Nearly cherry-pick fix for Imagick::count() with PHP >= 5.6.0RC2
-    in debian/patches/imagick_count_php_5.6.patch
+  * Cherry-pick fix (with minor changes) for Imagick::count() with
+    PHP >= 5.6.0RC2 in debian/patches/imagick_count_php_5.6.patch
   * Remove /etc/php5/conf.d/imagick.ini in {pre,post}inst and prerm
     (LP: #1017908, #1066230, #1264207)
-  * Bump to Standards-Version 3.9.5
-  * debian/clean: remove test/*.sh failed tests to re-build the package
+  * Bump to Standards-Version 3.9.6
+  * debian/rules: remove test/*.sh failed tests to re-build the package
     (see debian/TODO)
-  * Update maintainer to PHP PCL Maintainers list
+  * Update maintainer to PHP PECL Maintainers list
+  * Build-Depends on libmagickwand-6.q16-dev to replace libmagickwand-dev
+    transition package and use pkgconfig for version detection instead of
+    Wand-config shell script
 
- -- Guillaume Delacour <gui@iroqwa.org>  Tue, 02 Sep 2014 10:10:47 +0200
+ -- Guillaume Delacour <gui@iroqwa.org>  Thu, 09 Oct 2014 22:56:11 +0200
 
 php-imagick (3.1.2-1.1) unstable; urgency=medium
 
