@@ -289,7 +289,7 @@ PHP_METHOD(imagickpixeliterator, getpixelregioniterator)
 	long x, y, columns, rows;
 
 	/* Parse parameters given to function */
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O", &magick_object, php_imagick_sc_entry, &x, &y, &columns, &rows) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Ollll", &magick_object, php_imagick_sc_entry, &x, &y, &columns, &rows) == FAILURE) {
 		return;
 	}
 
@@ -452,7 +452,7 @@ PHP_METHOD(imagickpixeliterator, getpreviousiteratorrow)
 {
 	php_imagickpixeliterator_object *internpix;
 	PixelWand **wand_array;
-	unsigned long num_wands;
+	size_t num_wands;
 
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
@@ -490,7 +490,7 @@ PHP_METHOD(imagickpixeliterator, getcurrentiteratorrow)
 {
 	php_imagickpixeliterator_object *internpix;
 	PixelWand **wand_array;
-	unsigned long num_wands;
+	size_t num_wands;
 
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
@@ -531,7 +531,7 @@ PHP_METHOD(imagickpixeliterator, getnextiteratorrow)
 {
 	php_imagickpixeliterator_object *internpix;
 	PixelWand **wand_array;
-	unsigned long num_wands;
+	size_t num_wands;
 
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
@@ -585,8 +585,8 @@ PHP_METHOD(imagickpixeliterator, clear)
 }
 /* }}} */
 
-/* {{{ proto bool ImagickPixelIterator::clear()
-	Clear resources associated with a PixelIterator.
+/* {{{ proto bool ImagickPixelIterator::valid()
+	The if the current iterator row is valid
 */
 PHP_METHOD(imagickpixeliterator, valid)
 {

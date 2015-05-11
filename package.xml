@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<package packagerversion="1.9.4" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0 http://pear.php.net/dtd/tasks-1.0.xsd http://pear.php.net/dtd/package-2.0 http://pear.php.net/dtd/package-2.0.xsd">
+<package packagerversion="1.9.5" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0 http://pear.php.net/dtd/tasks-1.0.xsd http://pear.php.net/dtd/package-2.0 http://pear.php.net/dtd/package-2.0.xsd">
  <name>imagick</name>
  <channel>pecl.php.net</channel>
  <summary>Provides a wrapper to the ImageMagick library.</summary>
@@ -14,16 +14,22 @@ IMPORTANT: Version 2.x API is not compatible with earlier versions.</description
   <active>yes</active>
  </lead>
  <lead>
+  <name>Dan Ackroyd</name>
+  <user>danack</user>
+  <email>danack@php.net</email>
+  <active>yes</active>
+ </lead>
+ <lead>
   <name>Scott MacVicar</name>
   <user>scottmac</user>
   <email>scottmac@php.net</email>
   <active>no</active>
  </lead>
- <date>2013-11-25</date>
- <time>16:55:36</time>
+ <date>2015-03-29</date>
+ <time>19:14:13</time>
  <version>
-  <release>3.2.0RC1</release>
-  <api>3.2.0</api>
+  <release>3.3.0RC1</release>
+  <api>3.3.0</api>
  </version>
  <stability>
   <release>beta</release>
@@ -31,7 +37,84 @@ IMPORTANT: Version 2.x API is not compatible with earlier versions.</description
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Fix bug #66098: Segfault in zval_addref_p
+- Added ImagickKernel class. These can be used with the Imagick::morphology or
+Imagick::filter functions.
+- Added methods:
+* Imagick::brightnessContrastImage()
+* Imagick::colorMatrixImage()
+* Imagick::deleteImageProperty()
+* Imagick::filter()
+* Imagick::forwardFourierTransformImage()
+* Imagick::getAntiAlias()
+* Imagick::getImageCompression()
+* Imagick::getRegistry()
+* Imagick::getQuantum()
+* Imagick::identifyFormat()
+* Imagick::inverseFourierTransformImage()
+* Imagick::isPixelSimilarQuantum()
+* Imagick::listRegistry()
+* Imagick::morphology()
+* Imagick::rotationalBlurImage()
+* Imagick::selectiveBlurImage()
+* Imagick::setAntiAlias()
+* Imagick::setImageBiasQuantum()
+* Imagick::setProgressMonitor()
+* Imagick::setRegistry() - which allows setting the &quot;temporary-path&quot; used by ImageMagick
+* Imagick::statisticImage()
+* Imagick::subImageMatch()
+* ImagickPixel::getColorQuantum()
+- Added constants:
+* Imagick::RESOURCETYPE_TIME
+* Imagick::RESOURCETYPE_THROTTLE
+* Imagick::CHANNEL_RGBA
+* Imagick::ALPHACHANNEL_BACKGROUND
+* Imagick::FUNCTION_ARCSIN
+* Imagick::FUNCTION_ARCTAN
+- Fixed Imagick::clutImage() parameter parsing
+- Fixed tint image bug
+- Fixed ImageMagick compiled with HDRI having quantum values as floats
+- Fixed memory leaks in:
+* Imagick::getImageBlob()
+* Imagick::getImagesBlob()
+* Imagick::getImageChannelStatistics()
+* Imagick::getImageFormat()
+* Imagick::getImageMimetype()
+* Imagick::getSamplingFactors()
+* Imagick::identifyImage()
+* Imagick::tintImage
+- Fixed segfault when compiling statically
+- ImagickDraw::setFontFamily no longer checks whether the font is available. This allows a
+font family to be set where the family name is not the same as the font name. However it also
+means an invalid family name can be set, leading to the default font being used, instead of an
+exception being thrown. See https://github.com/mkoppanen/imagick/issues/77
+- Removed Zend MM support
+- Excluded deprecated methods:
+* Imagick::getImageMatte()
+* Imagick::colorFloodfillImage()
+* Imagick::matteFloodfillImage()
+* Imagick::paintFloodfillImage()
+* Imagick::paintOpaqueImage()
+* Imagick::paintTransparentImage()
+* Imagick::mapImage()
+* Imagick::recolorImage()
+* Imagick::setImageIndex()
+* Imagick::getImageIndex()
+* Imagick::getImageSize()
+* Imagick::setImageAttribute()
+* Imagick::getImageAttribute()
+* Imagick::mosaicImages()
+* Imagick::averageImages()
+* Imagick::flattenImages()
+This is replaced by $im = $im-&gt;mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN)
+* Imagick::getImageChannelExtrema()
+* Imagick::getImageExtrema()
+- Ini file changes
+* Added imagick.skip_version_check. Imagick now checks that it was compiled against the same version of
+ImageMagick that it is being run with, and will give a warning if it was compiled against a different
+version of ImageMagick. The skip_version_check setting allows you to suppress this warning. However
+it is strongly recommended to use the version of ImageMagick that Imagick was compiled against.
+- Misc:
+* CI now compiles with CFLAGS=&quot;-Wno-deprecated-declarations -Wdeclaration-after-statement -Werror&quot;
  </notes>
  <contents>
   <dir name="/">
@@ -56,41 +139,41 @@ IMPORTANT: Version 2.x API is not compatible with earlier versions.</description
    <file md5sum="56990bf85aadcf7fa0c2743e1543620c" name="tests/015-imagickdrawsetresolution.phpt" role="test" />
    <file md5sum="2d811a448bdd4e7c7b906db94cc518f8" name="tests/016-static-methods.phpt" role="test" />
    <file md5sum="59e0bde93ae3de720dbedc80bd23933a" name="tests/017-clear-destroy.phpt" role="test" />
-   <file md5sum="aa7707c77b6068570200863dfbe733c6" name="tests/018-clone-length.phpt" role="test" />
+   <file md5sum="f29396d232e6a8ebb334b928dbdbfe40" name="tests/018-clone-length.phpt" role="test" />
    <file md5sum="c5f954eda9e410ac2080dbee325ef4aa" name="tests/019-readimages.phpt" role="test" />
    <file md5sum="514d142f0b7230ac88643d034919bbba" name="tests/020-pixeliterator.phpt" role="test" />
    <file md5sum="de3f5f65b580cdbc6c037a9ea9b392de" name="tests/021-countable.phpt" role="test" />
    <file md5sum="e0ea8bda809c330148dc57d4686796d4" name="tests/022-writeimagefileformat.phpt" role="test" />
-   <file md5sum="73c7c8d9101af17db16be330e2174811" name="tests/023-php-allocators.phpt" role="test" />
-   <file md5sum="13fbd52993b292c32661bc7381c475b0" name="tests/024-ispixelsimilar.phpt" role="test" />
-   <file md5sum="d78ff1aa8caefabce22506147674d817" name="tests/bug20636.phpt" role="test" />
+   <file md5sum="dc1ca5de928c8afa701d32c875f9c440" name="tests/024-ispixelsimilar.phpt" role="test" />
+   <file md5sum="8fa72d31bc46f54783557f570145228c" name="tests/bug20636.phpt" role="test" />
    <file md5sum="44f0d734dab227610bfeae5d0f9266e3" name="tests/bug21229.phpt" role="test" />
    <file md5sum="01295ed8fec504253abead3add0ce2cb" name="tests/bug64015.phpt" role="test" />
-   <file md5sum="b32799c8af48d85143ae478445bea2a6" name="tests/bug_66098.phpt" role="test" />
+   <file md5sum="c0eea15f7fefcb5e8229339b90645d0c" name="tests/bug_66098.phpt" role="test" />
    <file md5sum="614fcbba1effb7caa27ef0ef25c27fcf" name="tests/php.gif" role="test" />
-   <file md5sum="6f0bec8e12b2a05f9eff68ec45aa0869" name="tests/skipif.inc" role="test" />
+   <file md5sum="623b01007285fe37a6fad29b1144580d" name="tests/skipif.inc" role="test" />
    <file md5sum="909d5067a0eb9607e346c3a2e121cb04" name="tests/anonymous_pro_minus.ttf" role="test" />
    <file md5sum="e9c57b856b24c9a8c396a12b4cdbdeb9" name="tests/OFL.txt" role="doc" />
-   <file md5sum="874c3a9cb0780d77805a24869bb112bb" name="config.m4" role="src" />
-   <file md5sum="82b64a67ae31069d386a1e84005af072" name="imagemagick.m4" role="src" />
-   <file md5sum="5129ecb45bdbad34a1ca7e1517150122" name="config.w32" role="src" />
+   <file md5sum="075da7d480cac3cf97adecd169cccaef" name="config.m4" role="src" />
+   <file md5sum="a3fd905419e5f32633ee5d9d794756d7" name="imagemagick.m4" role="src" />
+   <file md5sum="7df84d20e4d69d6034929f2ff0a7995a" name="config.w32" role="src" />
    <file md5sum="6077035e65e0b0bbe5a28917282e26b2" name="CREDITS" role="doc" />
-   <file md5sum="ac1cab152492b81c2b7600f0a205f2aa" name="imagick.c" role="src" />
-   <file md5sum="4531be3bb286542c7669dfdc90eee705" name="imagick_class.c" role="src" />
-   <file md5sum="856d22a573b10e5a2069de6c52ada0ad" name="imagickdraw_class.c" role="src" />
-   <file md5sum="40d2bc3bff55aeb7854ce36aff9ed6c3" name="imagickpixel_class.c" role="src" />
-   <file md5sum="486967069efcf5fa836112b529fcb384" name="imagickpixeliterator_class.c" role="src" />
-   <file md5sum="777917a2f2be5cf7dda488595f35e100" name="imagick_helpers.c" role="src" />
-   <file md5sum="485a7d42f1089a9858379fb61c768dea" name="imagick_file.c" role="src" />
-   <file md5sum="889aae7fd48b20195c071ca7914530ac" name="php_imagick.h" role="src">
+   <file md5sum="0cc9dcd456bcaa94d3f82e932d4062a4" name="imagick.c" role="src" />
+   <file md5sum="4804c482f145fac013121c426c7d7e5f" name="imagick_class.c" role="src" />
+   <file md5sum="6f11990b4611d16f4fa66e5a38fdba37" name="imagickdraw_class.c" role="src" />
+   <file md5sum="fa5e2e01f4e92dc4f6e8ab224666f72b" name="imagickpixel_class.c" role="src" />
+   <file md5sum="647338a2abad1df5d436aae2687bbdd7" name="imagickpixeliterator_class.c" role="src" />
+   <file md5sum="4f1c4d56a2fdc2afeb1148844b74318c" name="imagickkernel_class.c" role="src" />
+   <file md5sum="d4914d451cdd26131ea7e4c735f9be42" name="imagick_helpers.c" role="src" />
+   <file md5sum="3d7cd06185459b5c7f2423f345f555c4" name="imagick_file.c" role="src" />
+   <file md5sum="600c9bbbbb2099de7719ffd749d4b02a" name="php_imagick.h" role="src">
     <tasks:replace from="@PACKAGE_VERSION@" to="version" type="package-info" />
    </file>
-   <file md5sum="09ca19086279342b3724a9935d31466e" name="php_imagick_defs.h" role="src" />
-   <file md5sum="f0a8f8884c1a437f5690eee1d3523932" name="php_imagick_helpers.h" role="src" />
+   <file md5sum="995a7c1e1f34b00478dd8bce8b288f93" name="php_imagick_defs.h" role="src" />
+   <file md5sum="be93416087219f8f52a508638f02a836" name="php_imagick_helpers.h" role="src" />
    <file md5sum="1cda4ab0d10299d239db2c0e198b4084" name="php_imagick_macros.h" role="src" />
-   <file md5sum="c3427de9c4f2227316cf6ac47ad401cb" name="php_imagick_shared.h" role="src" />
-   <file md5sum="580f0cded89dee47b977341ec3326c55" name="php_imagick_file.h" role="src" />
-   <file md5sum="deddf559956f7278c46184a3755f1547" name="ChangeLog" role="doc" />
+   <file md5sum="9b4b96d6a870d2962576dd72ec953989" name="php_imagick_shared.h" role="src" />
+   <file md5sum="b407a134c7b9a5e3737e26a1f211347d" name="php_imagick_file.h" role="src" />
+   <file md5sum="9b4b19609a899f06117f9f69a6f82417" name="ChangeLog" role="doc" />
    <file md5sum="dd34a70236f008af999de817b93a5e3a" name="LICENSE" role="doc" />
   </dir>
  </contents>

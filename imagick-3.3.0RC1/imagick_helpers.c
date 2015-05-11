@@ -47,6 +47,76 @@ MagickBooleanType php_imagick_progress_monitor(const char *text, const MagickOff
 	return MagickTrue;
 }
 
+void php_imagick_cleanup_progress_callback(php_imagick_callback* progress_callback TSRMLS_DC) {
+
+	if (progress_callback) {
+		if (progress_callback->previous_callback) {
+			php_imagick_cleanup_progress_callback(progress_callback->previous_callback TSRMLS_CC);
+			efree(progress_callback->previous_callback);
+		}
+
+		zval_ptr_dtor(&progress_callback->user_callback);
+	}
+}
+
+MagickBooleanType php_imagick_progress_monitor_callable(const char *text, const MagickOffsetType offset, const MagickSizeType span, void *userData)
+{
+	//We can get the data both via the passed param and via
+	//IMAGICK_G(progress_callback) - this should be quicker
+	php_imagick_callback *callback = (php_imagick_callback*)userData;
+	int error;
+	zval **zargs[2];
+
+	zend_fcall_info_cache fci_cache;
+
+	zend_fcall_info fci;
+	zval *retval_ptr = NULL;
+
+	TSRMLS_FETCH_FROM_CTX(callback->thread_ctx);
+	fci_cache = empty_fcall_info_cache;
+	retval_ptr = NULL;
+
+	fci.size = sizeof(fci);
+	fci.function_table = EG(function_table);
+	fci.object_ptr = NULL;
+	fci.function_name = callback->user_callback;
+	fci.retval_ptr_ptr = &retval_ptr;
+	fci.param_count = 2;
+	fci.params = zargs;
+	fci.no_separation = 0;
+	fci.symbol_table = NULL;
+
+	zargs[0] = emalloc(sizeof(zval *));
+	MAKE_STD_ZVAL(*zargs[0]);
+	ZVAL_LONG(*zargs[0], offset);
+
+	zargs[1] = emalloc(sizeof(zval *));
+	MAKE_STD_ZVAL(*zargs[1]);
+	ZVAL_LONG(*zargs[1], span);
+
+	error = zend_call_function(&fci, &fci_cache TSRMLS_CC);
+
+	if (error == FAILURE) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "An error occurred while invoking the callback");
+		//Abort processing as user callback is no longer callable
+		return MagickFalse;
+	}
+
+	zval_ptr_dtor(zargs[0]);
+	zval_ptr_dtor(zargs[1]);
+
+	if (retval_ptr) {
+		if (Z_TYPE_P(retval_ptr) == IS_BOOL) {
+			if (Z_LVAL_P(retval_ptr) == 0) {
+				//User returned false - tell Imagick to abort processing.
+				return MagickFalse;
+			}
+		}
+	}
+
+	return MagickTrue;
+}
+
 zend_bool php_imagick_thumbnail_dimensions(MagickWand *magick_wand, zend_bool bestfit, long desired_width, long desired_height, long *new_width, long *new_height)
 {
 	long orig_width, orig_height;
@@ -253,7 +323,8 @@ zend_bool php_imagick_check_font(char *font, int font_len TSRMLS_DC)
 {
 	zend_bool retval = 0;
 	char **fonts;
-	unsigned long num_fonts = 0, i = 0;
+	unsigned long i = 0;
+	size_t num_fonts = 0;
 
 	/* Check that user is only able to set a proper font */
 	fonts = MagickQueryFonts("*", &num_fonts);
@@ -317,7 +388,12 @@ void s_rw_fail_to_exception (php_imagick_rw_result_t rc, const char *filename TS
 			zend_throw_exception_ex(php_imagick_exception_class_entry, 1 TSRMLS_CC, "The path does not exist: %s", filename);
 		break;
 
+		case IMAGICK_RW_PATH_IS_DIR:
+			zend_throw_exception_ex(php_imagick_exception_class_entry, 1 TSRMLS_CC, "The path is a directory: %s", filename);
+		break;
+
 		default:
+			zend_throw_exception_ex(php_imagick_exception_class_entry, 1 TSRMLS_CC, "Unknown error");
 		break;
 	}
 }
@@ -448,6 +524,12 @@ void php_imagick_throw_exception (php_imagick_class_type_t type, const char *des
 			ce = php_imagickpixel_exception_class_entry;
 			code = 4;
 		break;
+#ifdef IMAGICK_WITH_KERNEL
+		case IMAGICKKERNEL_CLASS:
+			ce = php_imagickkernel_exception_class_entry;
+			code = 5;
+		break;
+#endif
 	}
 	zend_throw_exception(ce, description, code TSRMLS_CC);
 }
@@ -964,6 +1046,7 @@ void php_imagick_initialize_constants(TSRMLS_D)
 	IMAGICK_REGISTER_CONST_LONG("CHANNEL_INDEX", IndexChannel);
 	IMAGICK_REGISTER_CONST_LONG("CHANNEL_ALL", AllChannels);
 	IMAGICK_REGISTER_CONST_LONG("CHANNEL_DEFAULT", DefaultChannels);
+	IMAGICK_REGISTER_CONST_LONG("CHANNEL_RGBA", RedChannel | GreenChannel | BlueChannel | AlphaChannel);
 #if MagickLibVersion >= 0x644
 	IMAGICK_REGISTER_CONST_LONG("CHANNEL_TRUEALPHA", TrueAlphaChannel);
 	IMAGICK_REGISTER_CONST_LONG("CHANNEL_RGBS", RGBChannels);
@@ -1039,7 +1122,9 @@ void php_imagick_initialize_constants(TSRMLS_D)
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_GRAY", GRAYColorspace);
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_TRANSPARENT", TransparentColorspace);
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_OHTA", OHTAColorspace);
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_LAB", LABColorspace);
+#endif
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_XYZ", XYZColorspace);
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_YCBCR", YCbCrColorspace);
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_YCC", YCCColorspace);
@@ -1162,6 +1247,10 @@ void php_imagick_initialize_constants(TSRMLS_D)
 	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_FILE", FileResource);
 	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_MAP", MapResource);
 	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_MEMORY", MemoryResource);
+#if MagickLibVersion >= 0x675
+	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_TIME", TimeResource);
+	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_THROTTLE", ThrottleResource);
+#endif
 #if MagickLibVersion > 0x678
 	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_THREAD", ThreadResource);
 #endif
@@ -1288,11 +1377,119 @@ void php_imagick_initialize_constants(TSRMLS_D)
 	IMAGICK_REGISTER_CONST_LONG("FUNCTION_POLYNOMIAL", PolynomialFunction);
 	IMAGICK_REGISTER_CONST_LONG("FUNCTION_SINUSOID", SinusoidFunction);
 #endif
+#if MagickLibVersion >= 0x653
+	IMAGICK_REGISTER_CONST_LONG("ALPHACHANNEL_BACKGROUND", BackgroundAlphaChannel);
+	IMAGICK_REGISTER_CONST_LONG("FUNCTION_ARCSIN", ArcsinFunction);
+	IMAGICK_REGISTER_CONST_LONG("FUNCTION_ARCTAN", ArctanFunction);
+#endif
 #if MagickLibVersion >= 0x680
 	IMAGICK_REGISTER_CONST_LONG("ALPHACHANNEL_FLATTEN", FlattenAlphaChannel);
 	IMAGICK_REGISTER_CONST_LONG("ALPHACHANNEL_REMOVE", RemoveAlphaChannel);
 #endif
 
+#if MagickLibVersion > 0x683
+	IMAGICK_REGISTER_CONST_LONG("STATISTIC_GRADIENT", GradientStatistic);
+	IMAGICK_REGISTER_CONST_LONG("STATISTIC_MAXIMUM", MaximumStatistic);
+	IMAGICK_REGISTER_CONST_LONG("STATISTIC_MEAN", MeanStatistic);
+	IMAGICK_REGISTER_CONST_LONG("STATISTIC_MEDIAN", MedianStatistic);
+	IMAGICK_REGISTER_CONST_LONG("STATISTIC_MINIMUM", MinimumStatistic);
+	IMAGICK_REGISTER_CONST_LONG("STATISTIC_MODE", ModeStatistic);
+	IMAGICK_REGISTER_CONST_LONG("STATISTIC_NONPEAK", NonpeakStatistic);
+	IMAGICK_REGISTER_CONST_LONG("STATISTIC_STANDARD_DEVIATION", StandardDeviationStatistic);
+#endif
+
+#ifdef IMAGICK_WITH_KERNEL
+/* Convolve / Correlate weighted sums */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_CONVOLVE", ConvolveMorphology); /* Weighted Sum with reflected kernel */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_CORRELATE", CorrelateMorphology); /* Weighted Sum using a sliding window */
+/* Low-level Morphology methods */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_ERODE", ErodeMorphology);  /* Minimum Value in Neighbourhood */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_DILATE", DilateMorphology);  /* Maximum Value in Neighbourhood */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_ERODE_INTENSITY", ErodeIntensityMorphology); /* Pixel Pick using GreyScale Erode */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_DILATE_INTENSITY", DilateIntensityMorphology); /* Pixel Pick using GreyScale Dialate */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_DISTANCE",  DistanceMorphology); /* Add Kernel Value, take Minimum */
+/* Second-level Morphology methods */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_OPEN", OpenMorphology); /* Dilate then Erode */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_CLOSE", CloseMorphology); /* Erode then Dilate */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_OPEN_INTENSITY", OpenIntensityMorphology); /* Pixel Pick using GreyScale Open */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_CLOSE_INTENSITY", CloseIntensityMorphology); /* Pixel Pick using GreyScale Close */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_SMOOTH", SmoothMorphology); /* Open then Close */
+/* Difference Morphology methods */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_EDGE_IN", EdgeInMorphology); /* Dilate difference from Original */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_EDGE_OUT", EdgeOutMorphology); /* Erode difference from Original */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_EDGE", EdgeMorphology); /* Dilate difference with Erode */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_TOP_HAT", TopHatMorphology); /* Close difference from Original */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_BOTTOM_HAT", BottomHatMorphology); /* Open difference from Original */
+/* Recursive Morphology methods */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_HIT_AND_MISS", HitAndMissMorphology); /* Foreground/Background pattern matching */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_THINNING", ThinningMorphology); /* Remove matching pixels from image */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_THICKEN", ThickenMorphology); /* Add matching pixels from image */
+/* Experimental Morphology methods */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_VORONOI", VoronoiMorphology); /* distance matte channel copy nearest color */
+IMAGICK_REGISTER_CONST_LONG("MORPHOLOGY_ITERATIVE", IterativeDistanceMorphology); /* Add Kernel Value, take Minimum */
+
+
+/* The no-op or 'original image' kernel */
+IMAGICK_REGISTER_CONST_LONG("KERNEL_UNITY", UnityKernel);
+/* Convolution Kernels, Gaussian Based */
+IMAGICK_REGISTER_CONST_LONG("KERNEL_GAUSSIAN", GaussianKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_DIFFERENCE_OF_GAUSSIANS", DoGKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_LAPLACIAN_OF_GAUSSIANS", LoGKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_BLUR", BlurKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_COMET", CometKernel);
+/* Convolution Kernels, by Name */
+IMAGICK_REGISTER_CONST_LONG("KERNEL_LAPLACIAN", LaplacianKernel);    
+IMAGICK_REGISTER_CONST_LONG("KERNEL_SOBEL", SobelKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_FREI_CHEN", FreiChenKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_ROBERTS", RobertsKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_PREWITT", PrewittKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_COMPASS", CompassKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_KIRSCH", KirschKernel);
+/* Shape Kernels */
+IMAGICK_REGISTER_CONST_LONG("KERNEL_DIAMOND", DiamondKernel); 
+IMAGICK_REGISTER_CONST_LONG("KERNEL_SQUARE", SquareKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_RECTANGLE", RectangleKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_OCTAGON", OctagonKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_DISK", DiskKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_PLUS", PlusKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_CROSS", CrossKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_RING", RingKernel);
+/* Hit And Miss Kernels */
+IMAGICK_REGISTER_CONST_LONG("KERNEL_PEAKS", PeaksKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_EDGES", EdgesKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_CORNERS", CornersKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_DIAGONALS", DiagonalsKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_LINE_ENDS", LineEndsKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_LINE_JUNCTIONS", LineJunctionsKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_RIDGES", RidgesKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_CONVEX_HULL", ConvexHullKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_THIN_SE", ThinSEKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_SKELETON", SkeletonKernel);
+/* Distance Measuring Kernels */
+IMAGICK_REGISTER_CONST_LONG("KERNEL_CHEBYSHEV", ChebyshevKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_MANHATTAN", ManhattanKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_OCTAGONAL", OctagonalKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_EUCLIDEAN", EuclideanKernel);
+/* User Specified Kernel Array */
+IMAGICK_REGISTER_CONST_LONG("KERNEL_USER_DEFINED", UserDefinedKernel);
+IMAGICK_REGISTER_CONST_LONG("KERNEL_BINOMIAL", BinomialKernel);
+
+
+// The kernel is scaled directly using given scaling factor without change.
+IMAGICK_REGISTER_CONST_LONG("NORMALIZE_KERNEL_NONE", 0);
+// Kernel normalization ('normalize_flags' given) is designed to ensure 
+// that any use of the kernel scaling factor with 'Convolve' or 'Correlate' 
+// morphology methods will fall into -1.0 to +1.0 range.
+IMAGICK_REGISTER_CONST_LONG("NORMALIZE_KERNEL_VALUE", NormalizeValue);
+// For special kernels designed for locating shapes using 'Correlate', (often 
+// only containing +1 and -1 values, representing foreground/brackground 
+// matching) a special normalization method is provided to scale the positive
+// values separately to those of the negative values, so the kernel will be 
+// forced to become a zero-sum kernel better suited to such searches.
+IMAGICK_REGISTER_CONST_LONG("NORMALIZE_KERNEL_CORRELATE", CorrelateNormalizeValue);
+// Scale the kernel by a percent.
+IMAGICK_REGISTER_CONST_LONG("NORMALIZE_KERNEL_PERCENT", PercentValue);
+#endif
 
 #undef IMAGICK_REGISTER_CONST_LONG
 #undef IMAGICK_REGISTER_CONST_STRING

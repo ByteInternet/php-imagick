@@ -33,6 +33,10 @@
 #  define IMAGICK_RESTORE_ERROR_HANDLING   php_set_error_handling(EH_NORMAL, NULL TSRMLS_CC)
 #endif
 
+#ifndef S_ISDIR
+#  define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
+#endif
+
 static
 zend_bool php_imagick_is_virtual_format(const char *format)
 {
@@ -76,7 +80,7 @@ zend_bool php_imagick_is_virtual_format(const char *format)
 static
 zend_bool php_imagick_is_url(const char *filename TSRMLS_DC)
 {
-	char *path_for_open;
+	const char *path_for_open;
 
 	if (php_stream_locate_url_wrapper(filename, &path_for_open, STREAM_LOCATE_WRAPPERS_ONLY TSRMLS_CC)) {
 		return 1;
@@ -87,6 +91,10 @@ zend_bool php_imagick_is_url(const char *filename TSRMLS_DC)
 zend_bool php_imagick_file_init(struct php_imagick_file_t *file, const char *filename, size_t filename_len TSRMLS_DC)
 {
 	char magick_path[MaxTextExtent], head_path[MaxTextExtent], tail_path[MaxTextExtent], buffer[MaxTextExtent];
+
+	if (!filename_len) {
+		return 0;
+	}
 
 	/* Undefined for now */
 	file->type = ImagickUndefinedType;
@@ -153,6 +161,11 @@ int php_imagick_read_image_using_imagemagick(php_imagick_object *intern, struct 
 {
 	if (type == ImagickReadImage) {
 		if (MagickReadImage(intern->magick_wand, file->filename) == MagickFalse) {
+			struct stat st;
+			/* Resolved to a filename. Check that it's not a dir */
+			if (php_sys_stat(file->absolute_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+				return IMAGICK_RW_PATH_IS_DIR;
+			}
 			return IMAGICK_RW_UNDERLYING_LIBRARY;
 		}
 	} else if (type == ImagickPingImage){

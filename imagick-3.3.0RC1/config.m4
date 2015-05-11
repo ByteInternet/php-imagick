@@ -1,29 +1,19 @@
 PHP_ARG_WITH(imagick, whether to enable the imagick extension,
 [ --with-imagick[=DIR]	Enables the imagick extension. DIR is the prefix to Imagemagick installation directory.], no)
 
-PHP_ARG_ENABLE(imagick-zend-mm, whether to make Imagick respect PHP memory limits,
-[ --enable-imagick-zend-mm	Make Imagick respect PHP memory limits (experimental)], no, no)
-
-
 
 if test $PHP_IMAGICK != "no"; then
 
 #
 # Find ImageMagick
 #
-  m4_include([imagemagick.m4])
-  IM_FIND_IMAGEMAGICK([6.2.4], [$PHP_IMAGICK])
+if test "$ext_shared" != "yes" && test "$ext_shared" != "shared"; then
+  define('PHP_IMAGICK_STATIC', 1)
+  PHP_IMAGICK_STATIC=yes
+fi
+m4_include(ifdef('PHP_IMAGICK_STATIC',PHP_EXT_BUILDDIR(imagick)[/],)[imagemagick.m4])
 
-#
-# Zend MM
-#
-  AC_MSG_CHECKING([whether to use Zend MM])
-  if test $PHP_IMAGICK_ZEND_MM != "no"; then
-    AC_DEFINE(PHP_IMAGICK_ZEND_MM,1,[ ])
-    AC_MSG_RESULT([yes])
-  else
-    AC_MSG_RESULT([no])
-  fi
+IM_FIND_IMAGEMAGICK([6.2.4], [$PHP_IMAGICK])
 
 #
 # PHP minimum version
@@ -58,6 +48,6 @@ if test $PHP_IMAGICK != "no"; then
 
   PHP_SUBST(IMAGICK_SHARED_LIBADD)
   AC_DEFINE(HAVE_IMAGICK,1,[ ])
-  PHP_NEW_EXTENSION(imagick, imagick_file.c imagick_class.c imagickdraw_class.c imagickpixel_class.c imagickpixeliterator_class.c imagick_helpers.c imagick.c, $ext_shared,, $IM_IMAGEMAGICK_CFLAGS)
+  PHP_NEW_EXTENSION(imagick, imagick_file.c imagick_class.c imagickdraw_class.c imagickpixel_class.c imagickpixeliterator_class.c imagick_helpers.c imagick.c imagickkernel_class.c, $ext_shared,, $IM_IMAGEMAGICK_CFLAGS)
   PHP_INSTALL_HEADERS([ext/imagick], [php_imagick_shared.h])
 fi
