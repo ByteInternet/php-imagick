@@ -21,139 +21,101 @@
 #include "php_imagick.h"
 #include "php_imagick_defs.h"
 #include "php_imagick_macros.h"
+#include "php_imagick_helpers.h"
 
 MagickBooleanType php_imagick_progress_monitor(const char *text, const MagickOffsetType offset, const MagickSizeType span, void *client_data)
 {
 	FILE *fp;
 	php_imagick_object *intern = (php_imagick_object *)client_data;
-	
+
 	if (!intern) {
 		return MagickFalse;
 	}
-	
+
 	if (!intern->progress_monitor_name) {
 		return MagickFalse;
 	}
 
 	fp = fopen(intern->progress_monitor_name, "a+");
-	
+
 	if (!fp) {
 		return MagickFalse;
 	}
 
-	fprintf(fp, "text: %s, offset: %ld, span: %ld\n", text, offset, span);
+	fprintf(fp, "text: %s, offset: %lld, span: %lld\n", text, offset, span);
 	fclose(fp);
-	return MagickTrue;	
+	return MagickTrue;
 }
 
 zend_bool php_imagick_thumbnail_dimensions(MagickWand *magick_wand, zend_bool bestfit, long desired_width, long desired_height, long *new_width, long *new_height)
 {
 	long orig_width, orig_height;
-	
-	orig_width  = MagickGetImageWidth(magick_wand); 
+
+	orig_width  = MagickGetImageWidth(magick_wand);
 	orig_height = MagickGetImageHeight(magick_wand);
-	
-	if ((orig_width == desired_width) && (orig_height == desired_height)) { 
-		*new_width  = desired_width; 
+
+	if ((orig_width == desired_width) && (orig_height == desired_height)) {
+		*new_width  = desired_width;
 		*new_height = desired_height;
 		return 1;
 	}
-	
-	if (bestfit) { 
-		double ratio_x, ratio_y; 
-		
+
+	if (bestfit) {
+		double ratio_x, ratio_y;
+
 		if (desired_width <= 0 || desired_height <= 0) {
 			return 0;
 		}
 
-		ratio_x = (double)desired_width / (double)orig_width; 
-		ratio_y = (double)desired_height / (double)orig_height; 
+		ratio_x = (double) desired_width  / (double) orig_width;
+		ratio_y = (double) desired_height / (double) orig_height;
 
 		//in the case of square images there should be no rounding error
 		if (ratio_x == ratio_y) {
 			*new_width  = desired_width;
 			*new_height = desired_height;
-		} else if (ratio_x < ratio_y) { 
+		} else if (ratio_x < ratio_y) {
 			*new_width  = desired_width;
-			*new_height = ratio_x * (double)orig_height; 
-		} else { 
-			*new_height = desired_height; 
-			*new_width  = ratio_y * (double)orig_width; 
-		} 
-		
-		*new_width  = (*new_width < 1)  ? 1 : *new_width; 
-		*new_height = (*new_height < 1) ? 1 : *new_height; 
- 
-	} else { 
-		double ratio; 
-		
-		if (desired_width <= 0 && desired_height <= 0) { 
+			*new_height = ratio_x * ((double) orig_height);
+		} else {
+			*new_height = desired_height;
+			*new_width  = ratio_y * ((double) orig_width);
+		}
+		*new_width  = (*new_width < 1)  ? 1 : *new_width;
+		*new_height = (*new_height < 1) ? 1 : *new_height;
+
+	} else {
+		double ratio;
+
+		if (desired_width <= 0 && desired_height <= 0) {
 			return 0;
 		}
-		
-		if (desired_width <= 0 || desired_height <= 0) {		 
-			if (desired_width <= 0) { 
-				ratio = (double)orig_height / (double)desired_height; 
-				*new_width  = orig_width / ratio;
+
+		if (desired_width <= 0 || desired_height <= 0) {
+			if (desired_width <= 0) {
+				ratio       = (double) orig_height / (double) desired_height;
+				*new_width  = ((double) orig_width) / ratio;
 				*new_height = desired_height;
-			} else { 
-				ratio = (double)orig_width / (double)desired_width; 
-				*new_height = orig_height / ratio;
+			} else {
+				ratio       = (double) orig_width / (double) desired_width;
+				*new_height = ((double) orig_height) / ratio;
 				*new_width  = desired_width;
 			}
 		} else {
-			*new_width  = desired_width; 
+			*new_width  = desired_width;
 			*new_height = desired_height;
 		}
 	}
 	return 1;
 }
 
-#if MagickLibVersion > 0x631
-/*
-	Resizes an image so that it is 'bestfit' for the bounding box
-	If the image does not fill the box completely the box is filled with
-	image's background color. The background color can be set using MagickSetImageBackgroundColor
-*/
-zend_bool php_imagick_resize_bounding_box(MagickWand *magick_wand, long box_width, long box_height, zend_bool fill)
-{
-	long new_width, new_height;
-	long extent_x, extent_y;
-
-	/* Calculate dimensions */
-	if (!php_imagick_thumbnail_dimensions(magick_wand, 1, box_width, box_height, &new_width, &new_height)) {
-		return 0;
-	}
-
-	/* Resize the image to the new size */
-	if (MagickThumbnailImage(magick_wand, new_width, new_height) == MagickFalse) {
-		return 0;
-	}
-
-	/* If user does not want to fill we are all done here */
-	if (!fill) {
-		return 1;
-	}
-
-	/* In case user wants to fill use extent for it rather than creating a new canvas */
-	extent_x = (box_width > new_width)   ? ((box_width - new_width) / 2)   : 0;
-	extent_y = (box_height > new_height) ? ((box_height - new_height) / 2) : 0;
-
-	if (MagickExtentImage(magick_wand, box_width, box_height, extent_x * -1, extent_y * -1) == MagickFalse) {
-		return 0;
-	}
-	return 1;
-}
-#endif
-
-
 zend_bool php_imagick_validate_map(const char *map TSRMLS_DC)
 {
 	zend_bool match;
-	char *p = map;
-	char allow_map[] = { 'R', 'G', 'B', 
-						 'A', 'O', 'C', 
-						 'Y', 'M', 'K', 
+	const char *p = map;
+	char allow_map[] = { 'R', 'G', 'B',
+						 'A', 'O', 'C',
+						 'Y', 'M', 'K',
 						 'I', 'P' };
 
 	while (*p != '\0') {
@@ -162,137 +124,139 @@ zend_bool php_imagick_validate_map(const char *map TSRMLS_DC)
 		while(*it != '\0') {
 			if (*(it++) == *p) {
 				match = 1;
+				break;
 			}
 		}
 		if (!match) {
 			return 0;
 		}
-		*(p++);
+		p++;
 	}
 	return 1;
 }
 
-int count_occurences_of(char needle, char *haystack TSRMLS_DC)
-{
-	int occurances = 0;
-
-	if (haystack == (char *)NULL) {
-		return 0;
-	}
-
-	while (*haystack != '\0') {
-		if (*(haystack++) == needle) {
-			occurances++;
-		}
-	}
-	return occurances;
-}
-
-double *get_double_array_from_zval(zval *param_array, long *num_elements TSRMLS_DC)
+double *php_imagick_zval_to_double_array(zval *param_array, long *num_elements TSRMLS_DC)
 {
 	zval **ppzval;
-	HashTable *ht;
 	double *double_array;
-	long elements, i = 0;
+	long i = 0;
 
-	*num_elements = elements = zend_hash_num_elements(Z_ARRVAL_P(param_array));
+	*num_elements = zend_hash_num_elements(Z_ARRVAL_P(param_array));
 
-	if (elements == 0) {
+	if (*num_elements == 0) {
 		return NULL;
 	}
 
-	double_array = (double *)emalloc(sizeof(double) * elements);
+	double_array = ecalloc(*num_elements, sizeof(double));
 
 	for (zend_hash_internal_pointer_reset(Z_ARRVAL_P(param_array));
 			zend_hash_get_current_data(Z_ARRVAL_P(param_array), (void **) &ppzval) == SUCCESS;
-			zend_hash_move_forward(Z_ARRVAL_P(param_array)), i++
-	) {
+			zend_hash_move_forward(Z_ARRVAL_P(param_array)), i++)
+	{
 		zval tmp_zval, *tmp_pzval;
-		
-		tmp_zval = **ppzval;
-		zval_copy_ctor(&tmp_zval);
-		tmp_pzval = &tmp_zval;
-		convert_to_double(tmp_pzval);
-		
-		double_array[i] = Z_DVAL_P(tmp_pzval);
-		tmp_pzval = NULL;
+		double value = 0.0;
+
+		if (Z_TYPE_PP(ppzval) == IS_DOUBLE) {
+			value = Z_DVAL_PP(ppzval);
+		}
+		else {
+			tmp_zval = **ppzval;
+			zval_copy_ctor(&tmp_zval);
+			tmp_pzval = &tmp_zval;
+			convert_to_double(tmp_pzval);
+
+			value = Z_DVAL_P(tmp_pzval);
+			zval_dtor (tmp_pzval);
+		}
+		double_array[i] = value;
 	}
-	*num_elements = elements;
 	return double_array;
 }
 
-long *get_long_array_from_zval(zval *param_array, long *num_elements TSRMLS_DC)
+long *php_imagick_zval_to_long_array(zval *param_array, long *num_elements TSRMLS_DC)
 {
 	zval **ppzval;
 	long *long_array;
-	long elements, i = 0;
+	long i = 0;
 
-	*num_elements = elements = zend_hash_num_elements(Z_ARRVAL_P(param_array));
+	*num_elements = zend_hash_num_elements(Z_ARRVAL_P(param_array));
 
-	if (elements == 0) {
+	if (*num_elements == 0) {
 		return NULL;
 	}
 
-	long_array = emalloc(sizeof(long) * elements);
+	long_array = ecalloc(*num_elements, sizeof(long));
 
 	for (zend_hash_internal_pointer_reset(Z_ARRVAL_P(param_array));
 			zend_hash_get_current_data(Z_ARRVAL_P(param_array), (void **) &ppzval) == SUCCESS;
-			zend_hash_move_forward(Z_ARRVAL_P(param_array)), i++
-	) {
+			zend_hash_move_forward(Z_ARRVAL_P(param_array)), i++)
+	{
 		zval tmp_zval, *tmp_pzval;
-		
-		tmp_zval = **ppzval;
-		zval_copy_ctor(&tmp_zval);
-		tmp_pzval = &tmp_zval;
-		convert_to_long(tmp_pzval);
-		
-		long_array[i] = Z_LVAL_P(tmp_pzval);
-		tmp_pzval = NULL;
+		long value = 0;
+
+		if (Z_TYPE_PP(ppzval) == IS_DOUBLE) {
+			value = Z_LVAL_PP(ppzval);
+		}
+		else {
+			tmp_zval = **ppzval;
+			zval_copy_ctor(&tmp_zval);
+			tmp_pzval = &tmp_zval;
+			convert_to_double(tmp_pzval);
+
+			value = Z_LVAL_P(tmp_pzval);
+			zval_dtor (tmp_pzval);
+		}
+		long_array[i] = value;
 	}
-	*num_elements = elements;
 	return long_array;
 }
 
-unsigned char *get_char_array_from_zval(zval *param_array, long *num_elements TSRMLS_DC)
+unsigned char *php_imagick_zval_to_char_array(zval *param_array, long *num_elements TSRMLS_DC)
 {
 	zval **ppzval;
 	unsigned char *char_array;
-	long elements, i = 0;
+	long i = 0;
 
-	*num_elements = elements = zend_hash_num_elements(Z_ARRVAL_P(param_array));
+	*num_elements = zend_hash_num_elements(Z_ARRVAL_P(param_array));
 
-	if (elements == 0) {
+	if (*num_elements == 0) {
 		return NULL;
 	}
 
-	char_array = emalloc(sizeof(unsigned char) * elements);
+	char_array = ecalloc(*num_elements, sizeof(unsigned char));
 
 	for (zend_hash_internal_pointer_reset(Z_ARRVAL_P(param_array));
 			zend_hash_get_current_data(Z_ARRVAL_P(param_array), (void **) &ppzval) == SUCCESS;
-			zend_hash_move_forward(Z_ARRVAL_P(param_array)), i++
-	) {
+			zend_hash_move_forward(Z_ARRVAL_P(param_array)), i++)
+	{
 		zval tmp_zval, *tmp_pzval;
-		
-		tmp_zval = **ppzval;
-		zval_copy_ctor(&tmp_zval);
-		tmp_pzval = &tmp_zval;
-		convert_to_long(tmp_pzval);
-		
-		char_array[i] = Z_LVAL_P(tmp_pzval);
-		tmp_pzval = NULL;
+		long value = 0;
+
+		if (Z_TYPE_PP(ppzval) == IS_DOUBLE) {
+			value = Z_LVAL_PP(ppzval);
+		}
+		else {
+			tmp_zval = **ppzval;
+			zval_copy_ctor(&tmp_zval);
+			tmp_pzval = &tmp_zval;
+			convert_to_double(tmp_pzval);
+
+			value = Z_LVAL_P(tmp_pzval);
+			zval_dtor (tmp_pzval);
+		}
+		char_array[i] = value;
 	}
-	*num_elements = elements;
 	return char_array;
 }
 
-int check_configured_font(char *font, int font_len TSRMLS_DC)
+zend_bool php_imagick_check_font(char *font, int font_len TSRMLS_DC)
 {
-	int retval = 0;
+	zend_bool retval = 0;
 	char **fonts;
 	unsigned long num_fonts = 0, i = 0;
 
 	/* Check that user is only able to set a proper font */
-	fonts = (char **) MagickQueryFonts("*", &num_fonts);
+	fonts = MagickQueryFonts("*", &num_fonts);
 
 	for(i = 0 ; i < num_fonts ; i++) {
 		/* Let's see if the font is among configured fonts */
@@ -302,58 +266,82 @@ int check_configured_font(char *font, int font_len TSRMLS_DC)
 		}
 	}
 
-	IMAGICK_FREE_MEMORY(char **, fonts);
+	IMAGICK_FREE_MAGICK_MEMORY(fonts);
 	return retval;
 }
 
-zend_bool crop_thumbnail_image(MagickWand *magick_wand, long desired_width, long desired_height TSRMLS_DC)
+php_imagick_rw_result_t php_imagick_file_access_check (const char *filename TSRMLS_DC)
 {
-	double ratio_x, ratio_y;
-	long crop_x = 0, crop_y = 0, new_width, new_height;
-	
-	long orig_width  = MagickGetImageWidth(magick_wand);
-	long orig_height = MagickGetImageHeight(magick_wand);
-	
-	/* Already at the size, just strip profiles */
-	if ((orig_width == desired_width) && (orig_height == desired_height)) {
-		if (!MagickStripImage(magick_wand)) {
-			return 0;
-		}
-		return 1;
-	}
-	
-	ratio_x = (double)desired_width / (double)orig_width; 
-	ratio_y = (double)desired_height / (double)orig_height; 
-	
-	if (ratio_x > ratio_y) { 
-		new_width  = desired_width; 
-		new_height = ratio_x * (double)orig_height; 
-	} else { 
-		new_height = desired_height; 
-		new_width  = ratio_y * (double)orig_width; 
-	}
-	
-	if (MagickThumbnailImage(magick_wand, new_width, new_height) == MagickFalse) {
-		return 0;
-	}
-	
-	/* all done here */
-	if ((new_width == desired_width) && (new_height == desired_height)) {
-		return 1;
-	}
-	
-	crop_x = (new_width - desired_width) / 2;
-	crop_y = (new_height - desired_height) / 2;
+	if (strlen(filename) >= MAXPATHLEN)
+		return IMAGICK_RW_FILENAME_TOO_LONG;
 
-	if (MagickCropImage(magick_wand, desired_width, desired_height, crop_x, crop_y) == MagickFalse) {
-		return 0;
-	}
-	
-	MagickSetImagePage(magick_wand, desired_width, desired_height, 0, 0);
-	return 1;
+#if defined(CHECKUID_CHECK_FILE_AND_DIR)
+	if (PG(safe_mode) && (!php_checkuid_ex(filename, NULL, CHECKUID_CHECK_FILE_AND_DIR, CHECKUID_NO_ERRORS)))
+	 	return IMAGICK_RW_SAFE_MODE_ERROR;
+#endif
+
+	if (php_check_open_basedir_ex(filename, 0 TSRMLS_CC))
+		return IMAGICK_RW_OPEN_BASEDIR_ERROR;
+
+	if (VCWD_ACCESS(filename, F_OK) != 0)
+		return IMAGICK_RW_PATH_DOES_NOT_EXIST;
+
+	if (VCWD_ACCESS(filename, R_OK) != 0)
+		return IMAGICK_RW_PERMISSION_DENIED;
+
+	return IMAGICK_RW_OK;
 }
 
-void *get_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
+static
+void s_rw_fail_to_exception (php_imagick_rw_result_t rc, const char *filename TSRMLS_DC)
+{
+	switch (rc) {
+
+		case IMAGICK_RW_SAFE_MODE_ERROR:
+			zend_throw_exception_ex(php_imagick_exception_class_entry, 1 TSRMLS_CC, "Safe mode restricts user to read the file: %s", filename);
+		break;
+
+		case IMAGICK_RW_OPEN_BASEDIR_ERROR:
+			zend_throw_exception_ex(php_imagick_exception_class_entry, 1 TSRMLS_CC, "open_basedir restriction in effect. File(%s) is not within the allowed path(s)", filename);
+		break;
+
+		case IMAGICK_RW_PERMISSION_DENIED:
+			zend_throw_exception_ex(php_imagick_exception_class_entry, 1 TSRMLS_CC, "Permission denied to: %s", filename);
+		break;
+
+		case IMAGICK_RW_FILENAME_TOO_LONG:
+			zend_throw_exception_ex(php_imagick_exception_class_entry, 1 TSRMLS_CC, "Filename too long: %s", filename);
+		break;
+
+		case IMAGICK_RW_PATH_DOES_NOT_EXIST:
+			zend_throw_exception_ex(php_imagick_exception_class_entry, 1 TSRMLS_CC, "The path does not exist: %s", filename);
+		break;
+
+		default:
+		break;
+	}
+}
+
+void php_imagick_rw_fail_to_exception (MagickWand *magick_wand, php_imagick_rw_result_t rc, const char *filename TSRMLS_DC)
+{
+	if (rc == IMAGICK_RW_UNDERLYING_LIBRARY) {
+		php_imagick_convert_imagick_exception (magick_wand, "Failed to read the file" TSRMLS_CC);
+		return;
+	}
+	s_rw_fail_to_exception (rc, filename TSRMLS_CC);
+}
+
+void php_imagick_imagickdraw_rw_fail_to_exception (DrawingWand *drawing_wand, php_imagick_rw_result_t rc, const char *filename TSRMLS_DC)
+{
+	if (rc == IMAGICK_RW_UNDERLYING_LIBRARY) {
+		php_imagick_convert_imagickdraw_exception (drawing_wand, "Failed to read the file" TSRMLS_CC);
+		return;
+	}
+	s_rw_fail_to_exception (rc, filename TSRMLS_CC);
+}
+
+
+PointInfo *php_imagick_zval_to_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
 {
 	PointInfo *coordinates;
 	long elements, sub_elements, i;
@@ -370,7 +358,7 @@ void *get_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
 	}
 
 	*num_elements = elements;
-	coordinates = (PointInfo *)emalloc(sizeof(PointInfo) * elements);
+	coordinates = emalloc(sizeof(PointInfo) * elements);
 
 	coords = Z_ARRVAL_P(coordinate_array);
 	zend_hash_internal_pointer_reset_ex(coords, (HashPosition *) 0);
@@ -383,7 +371,7 @@ void *get_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
 		zval tmp_zx, *tmp_pzx, tmp_zy, *tmp_pzy;
 
 		/* If its something than array lets error here */
-		if(Z_TYPE_PP(ppzval) != IS_ARRAY) {	
+		if(Z_TYPE_PP(ppzval) != IS_ARRAY) {
 			efree(coordinates);
 			*num_elements = 0;
 			return NULL;
@@ -408,19 +396,19 @@ void *get_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
 			*num_elements = 0;
 			return NULL;
 		}
-		
+
 		tmp_zx = **ppz_x;
 		zval_copy_ctor(&tmp_zx);
 		tmp_pzx = &tmp_zx;
 		convert_to_double(tmp_pzx);
-		
+
 		/* Get Y */
 		if (zend_hash_find(sub_array, "y", sizeof("y"), (void**)&ppz_y) == FAILURE) {
 			efree(coordinates);
 			*num_elements = 0;
 			return NULL;
-		}	
-		
+		}
+
 		tmp_zy = **ppz_y;
 		zval_copy_ctor(&tmp_zy);
 		tmp_pzy = &tmp_zy;
@@ -434,42 +422,309 @@ void *get_pointinfo_array(zval *coordinate_array, int *num_elements TSRMLS_DC)
 	return coordinates;
 }
 
-#if MagickLibVersion <= 0x628
-void count_pixeliterator_rows(php_imagickpixeliterator_object *internpix TSRMLS_DC)
+void php_imagick_throw_exception (php_imagick_class_type_t type, const char *description TSRMLS_DC)
 {
-	long rows = 0, tmp;
-	PixelWand **row;
-	(void) PixelResetIterator(internpix->pixel_iterator);
+	int code;
+	zend_class_entry *ce = NULL;
 
-	while ((row = (PixelWand **)PixelGetNextIteratorRow(internpix->pixel_iterator, &tmp))) {
-		if (row == (PixelWand **)NULL) {
-			break;
-		}
-		rows++;
+	switch (type) {
+		case IMAGICK_CLASS:
+		default:
+			ce = php_imagick_exception_class_entry;
+			code = 1;
+		break;
+
+		case IMAGICKDRAW_CLASS:
+			ce = php_imagickdraw_exception_class_entry;
+			code = 2;
+		break;
+
+		case IMAGICKPIXELITERATOR_CLASS:
+			ce = php_imagickpixeliterator_exception_class_entry;
+			code = 3;
+		break;
+
+		case IMAGICKPIXEL_CLASS:
+			ce = php_imagickpixel_exception_class_entry;
+			code = 4;
+		break;
 	}
-	internpix->rows = rows;
+	zend_throw_exception(ce, description, code TSRMLS_CC);
 }
-#endif
 
-void initialize_imagick_constants()
+static
+void s_convert_exception (char *description, const char *default_message, long severity, int code TSRMLS_DC)
 {
-	TSRMLS_FETCH();
+	// No description provided or empty one
+	if (!description || (strlen (description) == 0)) {
+		if (description) {
+			description = MagickRelinquishMemory (description);
+		}
+		zend_throw_exception(php_imagick_exception_class_entry, default_message, code TSRMLS_CC);
+		return;
+	}
+	zend_throw_exception(php_imagick_exception_class_entry, description, severity TSRMLS_CC);
+	MagickRelinquishMemory (description);
+}
+
+/**
+	Convert image magick MagickWand exception to PHP exception
+*/
+void php_imagick_convert_imagick_exception (MagickWand *magick_wand, const char *default_message TSRMLS_DC)
+{
+	ExceptionType severity;
+	char *description;
+
+	description = MagickGetException(magick_wand, &severity);
+	MagickClearException (magick_wand);
+
+	s_convert_exception (description, default_message, severity, 1 TSRMLS_CC);
+}
+
+void php_imagick_convert_imagickdraw_exception (DrawingWand *drawing_wand, const char *default_message TSRMLS_DC)
+{
+	ExceptionType severity;
+	char *description;
+
+	description = DrawGetException(drawing_wand, &severity);
+	DrawClearException (drawing_wand);
+
+	s_convert_exception (description, default_message, severity, 2 TSRMLS_CC);
+}
+
+void php_imagick_convert_imagickpixeliterator_exception (PixelIterator *pixel_iterator, const char *default_message TSRMLS_DC)
+{
+	ExceptionType severity;
+	char *description;
+
+	description = PixelGetIteratorException(pixel_iterator, &severity);
+	PixelClearIteratorException (pixel_iterator);
+
+	s_convert_exception (description, default_message, severity, 3 TSRMLS_CC);
+}
+
+void php_imagick_convert_imagickpixel_exception (PixelWand *pixel_wand, const char *default_message TSRMLS_DC)
+{
+	ExceptionType severity;
+	char *description;
+
+	description = PixelGetException(pixel_wand, &severity);
+	PixelClearException (pixel_wand);
+
+	s_convert_exception (description, default_message, severity, 4 TSRMLS_CC);
+}
+
+PixelWand *php_imagick_zval_to_pixelwand (zval *param, php_imagick_class_type_t caller, zend_bool *allocated TSRMLS_DC)
+{
+	PixelWand *pixel_wand = NULL;
+	*allocated = 0;
+
+	if (Z_TYPE_P (param) == IS_LONG || Z_TYPE_P (param) == IS_DOUBLE) {
+		zval var;
+		var = *param;
+
+		zval_copy_ctor(&var);
+		convert_to_string(&var);
+		param = &var;
+	}
+
+	switch (Z_TYPE_P(param)) {
+		case IS_STRING:
+		{
+			pixel_wand = NewPixelWand();
+			if (!pixel_wand) {
+				zend_error(E_ERROR, "Failed to allocate PixelWand structure");
+			}
+			*allocated = 1;
+
+			if (PixelSetColor (pixel_wand, Z_STRVAL_P(param)) == MagickFalse) {
+				pixel_wand = DestroyPixelWand(pixel_wand);
+				php_imagick_throw_exception (caller, "Unrecognized color string" TSRMLS_CC);
+				return NULL;
+			}
+		}
+		break;
+
+		case IS_OBJECT:
+			if (instanceof_function_ex(Z_OBJCE_P(param), php_imagickpixel_sc_entry, 0 TSRMLS_CC)) {
+				php_imagickpixel_object *intern = (php_imagickpixel_object *)zend_object_store_get_object(param TSRMLS_CC);
+				pixel_wand = intern->pixel_wand;
+			} else
+				php_imagick_throw_exception(caller, "The parameter must be an instance of ImagickPixel or a string" TSRMLS_CC);
+		break;
+
+		default:
+			php_imagick_throw_exception(caller, "Invalid color parameter provided" TSRMLS_CC);
+	}
+	return pixel_wand;
+}
+
+PixelWand *php_imagick_zval_to_opacity (zval *param, php_imagick_class_type_t caller, zend_bool *allocated TSRMLS_DC)
+{
+	PixelWand *pixel_wand = NULL;
+	*allocated = 0;
+
+	if (Z_TYPE_P (param) == IS_STRING) {
+		zval var;
+		var = *param;
+
+		zval_copy_ctor(&var);
+		convert_to_double(&var);
+		param = &var;
+	}
+
+	switch (Z_TYPE_P(param)) {
+		case IS_LONG:
+		case IS_DOUBLE:
+		{
+			pixel_wand = NewPixelWand();
+			if (!pixel_wand) {
+				zend_error(E_ERROR, "Failed to allocate PixelWand structure");
+			}
+			PixelSetOpacity(pixel_wand, Z_DVAL_P(param));
+			*allocated = 1;
+		}
+		break;
+
+		case IS_OBJECT:
+			if (instanceof_function_ex(Z_OBJCE_P(param), php_imagickpixel_sc_entry, 0 TSRMLS_CC)) {
+				php_imagickpixel_object *intern = (php_imagickpixel_object *)zend_object_store_get_object(param TSRMLS_CC);
+				pixel_wand = intern->pixel_wand;
+			} else
+				php_imagick_throw_exception(caller, "The parameter must be an instance of ImagickPixel or a string"  TSRMLS_CC);
+		break;
+
+		default:
+			php_imagick_throw_exception(caller, "Invalid color parameter provided" TSRMLS_CC);
+	}
+	return pixel_wand;
+}
+
+/**
+ * Changes the locale to IMAGICK_LC_NUMERIC_LOCALE if imagick.locale_fix is on
+ * and returns the locale set before calling this function.
+ * If locale is not changed, NULL is returned
+ *
+ */
+char *php_imagick_set_locale (TSRMLS_D)
+{
+	char *current_locale;
+
+	if (!IMAGICK_G(locale_fix))
+		return NULL;
+
+	current_locale = setlocale(LC_NUMERIC, NULL);
+	if (current_locale != NULL) {
+		if (strcmp (current_locale, IMAGICK_LC_NUMERIC_LOCALE) != 0) {
+			setlocale (LC_NUMERIC, IMAGICK_LC_NUMERIC_LOCALE);
+			return estrdup (current_locale);
+		}
+	}
+	return NULL;
+}
+
+void php_imagick_restore_locale (const char *old_locale)
+{
+	if (!old_locale)
+		return;
+
+	if (strcmp (old_locale, IMAGICK_LC_NUMERIC_LOCALE) != 0)
+		setlocale (LC_NUMERIC, old_locale);
+}
+
+PixelWand *php_imagick_clone_pixelwand (PixelWand *source)
+{
+#if MagickLibVersion >= 0x635
+	return ClonePixelWand(source);
+#else
+	PixelWand *target = NewPixelWand ();
+	if (!target)
+		return NULL;
+
+	PixelSetColorCount (target, PixelGetColorCount (source));
+	PixelSetRed (target, PixelGetRed (source));
+	PixelSetGreen (target, PixelGetGreen (source));
+	PixelSetBlue (target, PixelGetBlue (source));
+	PixelSetOpacity (target, PixelGetOpacity (source));
+	PixelSetAlpha (target, PixelGetAlpha (source));
+
+	return target;
+#endif
+}
+
+void php_imagick_replace_magickwand (php_imagick_object *obj, MagickWand *new_wand)
+{
+	if (!obj->magick_wand)
+		obj->magick_wand = new_wand;
+	else {
+		obj->magick_wand = DestroyMagickWand(obj->magick_wand);
+		obj->magick_wand = new_wand;
+	}
+}
+
+void php_imagick_replace_drawingwand (php_imagickdraw_object *obj, DrawingWand *new_wand)
+{
+	if (!obj->drawing_wand)
+		obj->drawing_wand = new_wand;
+	else {
+		obj->drawing_wand = DestroyDrawingWand(obj->drawing_wand);
+		obj->drawing_wand = new_wand;
+	}
+}
+
+void php_imagick_replace_pixelwand (php_imagickpixel_object *obj, PixelWand *new_wand)
+{
+	if (obj->pixel_wand && obj->initialized_via_iterator != 1) {
+		obj->pixel_wand = DestroyPixelWand(obj->pixel_wand);
+		obj->pixel_wand = new_wand;
+	} else
+		obj->pixel_wand = new_wand;
+}
+
+zend_bool php_imagick_ensure_not_empty (MagickWand *magick_wand)
+{
+	if (MagickGetNumberImages(magick_wand) == 0) {
+		TSRMLS_FETCH ();
+		php_imagick_throw_exception (IMAGICK_CLASS, "Can not process empty Imagick object" TSRMLS_CC);
+		return 0;
+	}
+	return 1;
+}
+
+void php_imagick_initialize_constants(TSRMLS_D)
+{
+#define IMAGICK_REGISTER_CONST_LONG(const_name, value)\
+	zend_declare_class_constant_long(php_imagick_sc_entry, const_name, sizeof(const_name)-1, (long)value TSRMLS_CC);
+
+#define IMAGICK_REGISTER_CONST_STRING(const_name, value)\
+	zend_declare_class_constant_string(php_imagick_sc_entry, const_name, sizeof(const_name)-1, value TSRMLS_CC);
 
 	/* Constants defined in php_imagick.h */
-	IMAGICK_REGISTER_CONST_LONG("COLOR_BLACK", IMAGICKCOLORBLACK);
-	IMAGICK_REGISTER_CONST_LONG("COLOR_BLUE", IMAGICKCOLORBLUE);
-	IMAGICK_REGISTER_CONST_LONG("COLOR_CYAN", IMAGICKCOLORCYAN);
-	IMAGICK_REGISTER_CONST_LONG("COLOR_GREEN", IMAGICKCOLORGREEN);
-	IMAGICK_REGISTER_CONST_LONG("COLOR_RED", IMAGICKCOLORRED);
-	IMAGICK_REGISTER_CONST_LONG("COLOR_YELLOW", IMAGICKCOLORYELLOW);
-	IMAGICK_REGISTER_CONST_LONG("COLOR_MAGENTA", IMAGICKCOLORMAGENTA);
-	IMAGICK_REGISTER_CONST_LONG("COLOR_OPACITY", IMAGICKCOLOROPACITY);
-	IMAGICK_REGISTER_CONST_LONG("COLOR_ALPHA", IMAGICKCOLORALPHA);
-	IMAGICK_REGISTER_CONST_LONG("COLOR_FUZZ", IMAGICKCOLORFUZZ);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_BLACK", PHP_IMAGICK_COLOR_BLACK);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_BLUE", PHP_IMAGICK_COLOR_BLUE);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_CYAN", PHP_IMAGICK_COLOR_CYAN);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_GREEN", PHP_IMAGICK_COLOR_GREEN);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_RED", PHP_IMAGICK_COLOR_RED);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_YELLOW", PHP_IMAGICK_COLOR_YELLOW);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_MAGENTA", PHP_IMAGICK_COLOR_MAGENTA);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_OPACITY", PHP_IMAGICK_COLOR_OPACITY);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_ALPHA", PHP_IMAGICK_COLOR_ALPHA);
+	IMAGICK_REGISTER_CONST_LONG("COLOR_FUZZ", PHP_IMAGICK_COLOR_FUZZ);
 
 	/* Returning the version as a constant string */
 	IMAGICK_REGISTER_CONST_LONG("IMAGICK_EXTNUM", PHP_IMAGICK_EXTNUM);
 	IMAGICK_REGISTER_CONST_STRING("IMAGICK_EXTVER", PHP_IMAGICK_VERSION);
+
+#if defined(MagickQuantumRange)
+	IMAGICK_REGISTER_CONST_LONG("QUANTUM_RANGE", atoi (MagickQuantumRange));
+#endif
+
+	/* Are we using PHP allocations */
+#ifdef PHP_IMAGICK_ZEND_MM
+	IMAGICK_REGISTER_CONST_LONG("USE_ZEND_MM", 1);
+#else
+	IMAGICK_REGISTER_CONST_LONG("USE_ZEND_MM", 0);
+#endif
 
 	/* ImageMagick defined constants */
 	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_DEFAULT", OverCompositeOp);
@@ -526,6 +781,37 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_SUBTRACT", SubtractCompositeOp);
 	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_THRESHOLD", ThresholdCompositeOp);
 	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_XOR", XorCompositeOp);
+#if MagickLibVersion >= 0x634
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_CHANGEMASK", ChangeMaskCompositeOp);
+#endif
+#if MagickLibVersion >= 0x636
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_LINEARLIGHT", LinearLightCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_DIVIDE", DivideCompositeOp);
+#endif
+#if MagickLibVersion >= 0x654
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_DISTORT", DistortCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_BLUR", BlurCompositeOp);
+#endif
+#if MagickLibVersion >= 0x655
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_PEGTOPLIGHT", PegtopLightCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_VIVIDLIGHT", VividLightCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_PINLIGHT", PinLightCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_LINEARDODGE", LinearDodgeCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_LINEARBURN", LinearBurnCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_MATHEMATICS", MathematicsCompositeOp);
+#endif
+#if MagickLibVersion >= 0x662
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_MODULUSADD", ModulusAddCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_MODULUSSUBTRACT", ModulusSubtractCompositeOp);
+#endif
+#if MagickLibVersion >= 0x670
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_MINUSDST", MinusDstCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_DIVIDEDST", DivideDstCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_DIVIDESRC", DivideSrcCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_MINUSSRC", MinusSrcCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_DARKENINTENSITY", DarkenIntensityCompositeOp);
+	IMAGICK_REGISTER_CONST_LONG("COMPOSITE_LIGHTENINTENSITY", LightenIntensityCompositeOp);
+#endif
 	IMAGICK_REGISTER_CONST_LONG("MONTAGEMODE_FRAME", FrameMode);
 	IMAGICK_REGISTER_CONST_LONG("MONTAGEMODE_UNFRAME", UnframeMode);
 	IMAGICK_REGISTER_CONST_LONG("MONTAGEMODE_CONCATENATE", ConcatenateMode);
@@ -549,6 +835,35 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("FILTER_LANCZOS", LanczosFilter);
 	IMAGICK_REGISTER_CONST_LONG("FILTER_BESSEL", BesselFilter);
 	IMAGICK_REGISTER_CONST_LONG("FILTER_SINC", SincFilter);
+#if MagickLibVersion >= 0x637
+	IMAGICK_REGISTER_CONST_LONG("FILTER_KAISER", KaiserFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_WELSH", WelshFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_PARZEN", ParzenFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_LAGRANGE", LagrangeFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_SENTINEL", SentinelFilter);
+#endif
+#if MagickLibVersion >= 0x638
+	IMAGICK_REGISTER_CONST_LONG("FILTER_BOHMAN", BohmanFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_BARTLETT", BartlettFilter);
+#endif
+#if MagickLibVersion >= 0x666
+	IMAGICK_REGISTER_CONST_LONG("FILTER_JINC", JincFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_SINCFAST", SincFastFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_ROBIDOUX", RobidouxFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_LANCZOSSHARP", LanczosSharpFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_LANCZOS2", Lanczos2Filter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_LANCZOS2SHARP", Lanczos2SharpFilter);
+#endif
+#if MagickLibVersion >= 0x677
+	IMAGICK_REGISTER_CONST_LONG("FILTER_ROBIDOUXSHARP", RobidouxSharpFilter);
+	IMAGICK_REGISTER_CONST_LONG("FILTER_COSINE", CosineFilter);
+#endif
+#if MagickLibVersion >= 0x678
+	IMAGICK_REGISTER_CONST_LONG("FILTER_SPLINE", SplineFilter);
+#endif
+#if MagickLibVersion >= 0x681
+	IMAGICK_REGISTER_CONST_LONG("FILTER_LANCZOSRADIUS", LanczosRadiusFilter);
+#endif
 	IMAGICK_REGISTER_CONST_LONG("IMGTYPE_UNDEFINED", UndefinedType);
 	IMAGICK_REGISTER_CONST_LONG("IMGTYPE_BILEVEL", BilevelType);
 	IMAGICK_REGISTER_CONST_LONG("IMGTYPE_GRAYSCALE", GrayscaleType);
@@ -560,6 +875,7 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("IMGTYPE_COLORSEPARATION", ColorSeparationType);
 	IMAGICK_REGISTER_CONST_LONG("IMGTYPE_COLORSEPARATIONMATTE", ColorSeparationMatteType);
 	IMAGICK_REGISTER_CONST_LONG("IMGTYPE_OPTIMIZE", OptimizeType);
+	IMAGICK_REGISTER_CONST_LONG("IMGTYPE_PALETTEBILEVELMATTE", PaletteBilevelMatteType);
 	IMAGICK_REGISTER_CONST_LONG("RESOLUTION_UNDEFINED", UndefinedResolution);
 	IMAGICK_REGISTER_CONST_LONG("RESOLUTION_PIXELSPERINCH", PixelsPerInchResolution);
 	IMAGICK_REGISTER_CONST_LONG("RESOLUTION_PIXELSPERCENTIMETER", PixelsPerCentimeterResolution);
@@ -578,6 +894,20 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_DXT1", DXT1Compression);
 	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_DXT3", DXT3Compression);
 	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_DXT5", DXT5Compression);
+#endif
+#if MagickLibVersion >= 0x656
+	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_ZIPS", ZipSCompression);
+	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_PIZ", PizCompression);
+	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_PXR24", Pxr24Compression);
+	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_B44", B44Compression);
+	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_B44A", B44ACompression);
+#endif
+#if MagickLibVersion >= 0x667
+	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_LZMA", LZMACompression);
+#endif
+#if MagickLibVersion >= 0x670
+	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_JBIG1", JBIG1Compression);
+	IMAGICK_REGISTER_CONST_LONG("COMPRESSION_JBIG2", JBIG2Compression);
 #endif
 	IMAGICK_REGISTER_CONST_LONG("PAINT_POINT", PointMethod);
 	IMAGICK_REGISTER_CONST_LONG("PAINT_REPLACE", ReplaceMethod);
@@ -633,9 +963,20 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("CHANNEL_BLACK", BlackChannel);
 	IMAGICK_REGISTER_CONST_LONG("CHANNEL_INDEX", IndexChannel);
 	IMAGICK_REGISTER_CONST_LONG("CHANNEL_ALL", AllChannels);
-#ifdef DefaultChannels
 	IMAGICK_REGISTER_CONST_LONG("CHANNEL_DEFAULT", DefaultChannels);
-#endif	
+#if MagickLibVersion >= 0x644
+	IMAGICK_REGISTER_CONST_LONG("CHANNEL_TRUEALPHA", TrueAlphaChannel);
+	IMAGICK_REGISTER_CONST_LONG("CHANNEL_RGBS", RGBChannels);
+#endif
+#if MagickLibVersion >= 0x655
+	IMAGICK_REGISTER_CONST_LONG("CHANNEL_GRAY", GrayChannels);
+#endif
+#if MagickLibVersion >= 0x656
+	IMAGICK_REGISTER_CONST_LONG("CHANNEL_SYNC", SyncChannels);
+#endif
+#if MagickLibVersion >= 0x670
+	IMAGICK_REGISTER_CONST_LONG("CHANNEL_COMPOSITES", CompositeChannels);
+#endif
 	IMAGICK_REGISTER_CONST_LONG("METRIC_UNDEFINED", UndefinedMetric);
 	IMAGICK_REGISTER_CONST_LONG("METRIC_MEANABSOLUTEERROR", MeanAbsoluteErrorMetric);
 	IMAGICK_REGISTER_CONST_LONG("METRIC_MEANSQUAREERROR", MeanSquaredErrorMetric);
@@ -679,7 +1020,20 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("EVALUATE_COSINE", CosineEvaluateOperator);
 	IMAGICK_REGISTER_CONST_LONG("EVALUATE_SINE", SineEvaluateOperator);
 	IMAGICK_REGISTER_CONST_LONG("EVALUATE_ADDMODULUS", AddModulusEvaluateOperator);
-#endif	
+#endif
+#if MagickLibVersion >= 0x661
+	IMAGICK_REGISTER_CONST_LONG("EVALUATE_MEAN", MeanEvaluateOperator);
+#endif
+#if MagickLibVersion >= 0x664
+	IMAGICK_REGISTER_CONST_LONG("EVALUATE_ABS", AbsEvaluateOperator);
+#endif
+#if MagickLibVersion >= 0x666
+	IMAGICK_REGISTER_CONST_LONG("EVALUATE_EXPONENTIAL", ExponentialEvaluateOperator);
+	IMAGICK_REGISTER_CONST_LONG("EVALUATE_MEDIAN", MedianEvaluateOperator);
+#endif
+#if MagickLibVersion >= 0x676
+	IMAGICK_REGISTER_CONST_LONG("EVALUATE_SUM", SumEvaluateOperator);
+#endif
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_UNDEFINED", UndefinedColorspace);
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_RGB", RGBColorspace);
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_GRAY", GRAYColorspace);
@@ -703,6 +1057,23 @@ void initialize_imagick_constants()
 #if MagickLibVersion >= 0x642
 	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_CMY", CMYColorspace);
 #endif
+#if MagickLibVersion >= 0x679
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_LUV", LuvColorspace);
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_HCL", HCLColorspace);
+#endif
+#if MagickLibVersion >= 0x680
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_LCH", LCHColorspace);
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_LMS", LMSColorspace);
+#endif
+#if MagickLibVersion >= 0x686
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_LCHAB", LCHabColorspace);
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_LCHUV", LCHuvColorspace);
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_SCRGB", scRGBColorspace);
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_HSI", HSIColorspace);
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_HSV", HSVColorspace);
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_HCLP", HCLpColorspace);
+	IMAGICK_REGISTER_CONST_LONG("COLORSPACE_YDBDR", YDbDrColorspace);
+#endif
 	IMAGICK_REGISTER_CONST_LONG("VIRTUALPIXELMETHOD_UNDEFINED", UndefinedVirtualPixelMethod);
 	IMAGICK_REGISTER_CONST_LONG("VIRTUALPIXELMETHOD_BACKGROUND", BackgroundVirtualPixelMethod);
 	IMAGICK_REGISTER_CONST_LONG("VIRTUALPIXELMETHOD_CONSTANT", ConstantVirtualPixelMethod);  /* deprecated */
@@ -719,6 +1090,11 @@ void initialize_imagick_constants()
 #if MagickLibVersion > 0x642
 	IMAGICK_REGISTER_CONST_LONG("VIRTUALPIXELMETHOD_HORIZONTALTILE", HorizontalTileVirtualPixelMethod);
 	IMAGICK_REGISTER_CONST_LONG("VIRTUALPIXELMETHOD_VERTICALTILE", VerticalTileVirtualPixelMethod);
+#endif
+#if MagickLibVersion >= 0x651
+	IMAGICK_REGISTER_CONST_LONG("VIRTUALPIXELMETHOD_HORIZONTALTILEEDGE", HorizontalTileEdgeVirtualPixelMethod);
+	IMAGICK_REGISTER_CONST_LONG("VIRTUALPIXELMETHOD_VERTICALTILEEDGE", VerticalTileEdgeVirtualPixelMethod);
+	IMAGICK_REGISTER_CONST_LONG("VIRTUALPIXELMETHOD_CHECKERTILE", CheckerTileVirtualPixelMethod);
 #endif
 	IMAGICK_REGISTER_CONST_LONG("PREVIEW_UNDEFINED", UndefinedPreview);
 	IMAGICK_REGISTER_CONST_LONG("PREVIEW_ROTATE", RotatePreview);
@@ -786,6 +1162,9 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_FILE", FileResource);
 	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_MAP", MapResource);
 	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_MEMORY", MemoryResource);
+#if MagickLibVersion > 0x678
+	IMAGICK_REGISTER_CONST_LONG("RESOURCETYPE_THREAD", ThreadResource);
+#endif
 	IMAGICK_REGISTER_CONST_LONG("DISPOSE_UNRECOGNIZED", UnrecognizedDispose);
 	IMAGICK_REGISTER_CONST_LONG("DISPOSE_UNDEFINED", UndefinedDispose);
 	IMAGICK_REGISTER_CONST_LONG("DISPOSE_NONE", NoneDispose);
@@ -821,6 +1200,15 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("LAYERMETHOD_REMOVEDUPS", RemoveDupsLayer);
 	IMAGICK_REGISTER_CONST_LONG("LAYERMETHOD_REMOVEZERO", RemoveZeroLayer);
 #endif
+#if MagickLibVersion >= 0x637
+	IMAGICK_REGISTER_CONST_LONG("LAYERMETHOD_COMPOSITE", CompositeLayer);
+	IMAGICK_REGISTER_CONST_LONG("LAYERMETHOD_MERGE", MergeLayer);
+	IMAGICK_REGISTER_CONST_LONG("LAYERMETHOD_FLATTEN", FlattenLayer);
+	IMAGICK_REGISTER_CONST_LONG("LAYERMETHOD_MOSAIC", MosaicLayer);
+#endif
+#if MagickLibVersion >= 0x644
+	IMAGICK_REGISTER_CONST_LONG("LAYERMETHOD_TRIMBOUNDS", TrimBoundsLayer);
+#endif
 #if MagickLibVersion > 0x629
 	IMAGICK_REGISTER_CONST_LONG("ORIENTATION_UNDEFINED", UndefinedOrientation);
 	IMAGICK_REGISTER_CONST_LONG("ORIENTATION_TOPLEFT", TopLeftOrientation);
@@ -850,6 +1238,20 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("DISTORTION_BARRELINVERSE", BarrelInverseDistortion);
 	IMAGICK_REGISTER_CONST_LONG("DISTORTION_SHEPARDS", ShepardsDistortion);
 	IMAGICK_REGISTER_CONST_LONG("DISTORTION_SENTINEL", SentinelDistortion);
+#endif
+#if MagickLibVersion >= 0x644
+	IMAGICK_REGISTER_CONST_LONG("DISTORTION_BARRELINVERSE", BarrelInverseDistortion);
+#endif
+#if MagickLibVersion >= 0x654
+	IMAGICK_REGISTER_CONST_LONG("DISTORTION_BILINEARFORWARD", BilinearForwardDistortion);
+	IMAGICK_REGISTER_CONST_LONG("DISTORTION_BILINEARREVERSE", BilinearReverseDistortion);
+#endif
+#if MagickLibVersion >= 0x670
+	IMAGICK_REGISTER_CONST_LONG("DISTORTION_RESIZE", ResizeDistortion);
+#endif
+#if MagickLibVersion >= 0x671
+	IMAGICK_REGISTER_CONST_LONG("DISTORTION_CYLINDER2PLANE", Cylinder2PlaneDistortion);
+	IMAGICK_REGISTER_CONST_LONG("DISTORTION_PLANE2CYLINDER", Plane2CylinderDistortion);
 #endif
 #if MagickLibVersion > 0x636
 	IMAGICK_REGISTER_CONST_LONG("LAYERMETHOD_MERGE", MergeLayer);
@@ -886,4 +1288,12 @@ void initialize_imagick_constants()
 	IMAGICK_REGISTER_CONST_LONG("FUNCTION_POLYNOMIAL", PolynomialFunction);
 	IMAGICK_REGISTER_CONST_LONG("FUNCTION_SINUSOID", SinusoidFunction);
 #endif
+#if MagickLibVersion >= 0x680
+	IMAGICK_REGISTER_CONST_LONG("ALPHACHANNEL_FLATTEN", FlattenAlphaChannel);
+	IMAGICK_REGISTER_CONST_LONG("ALPHACHANNEL_REMOVE", RemoveAlphaChannel);
+#endif
+
+
+#undef IMAGICK_REGISTER_CONST_LONG
+#undef IMAGICK_REGISTER_CONST_STRING
 }

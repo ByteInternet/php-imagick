@@ -17,23 +17,33 @@
    |         Scott MacVicar <scottmac@php.net>                            |
    +----------------------------------------------------------------------+
 */
+#ifndef PHP_IMAGICK_H
+/* Prevent double inclusion */
+#define PHP_IMAGICK_H
 
-#ifndef _PHP_IMAGICK_SHARED_H_
-# define _PHP_IMAGICK_SHARED_H_
+/* Define Extension Properties */
+#define PHP_IMAGICK_EXTNAME    "imagick"
+#define PHP_IMAGICK_VERSION    "3.2.0RC1"
+#define PHP_IMAGICK_EXTNUM     30200
 
-/* Only works with newer Imagick */
-#ifndef IMAGICK_USE_NEW_HEADER
-# define IMAGICK_USE_NEW_HEADER 1
+/* Import configure options when building 
+   outside of the PHP source tree */
+#ifdef HAVE_CONFIG_H
+# include "config.h"
 #endif
 
-#include "php_imagick.h"
-#include "php_imagick_defs.h"
-
-/*
-	Allow extensions to use the class entries
-*/
-MY_IMAGICK_EXPORTS zend_class_entry *php_imagick_get_class_entry();
-MY_IMAGICK_EXPORTS zend_class_entry *php_imagickdraw_get_class_entry();
-MY_IMAGICK_EXPORTS zend_class_entry *php_imagickpixel_get_class_entry();
-
+#ifdef ZTS
+# include "TSRM.h"
 #endif
+
+/* Include PHP Standard Headers */
+#include "php.h"
+
+/* Define the entry point symbol
+ * ZE will use when loading this module
+ */
+extern zend_module_entry imagick_module_entry;
+#define phpext_imagick_ptr &imagick_module_entry
+
+#endif /* PHP_IMAGICK_H */
+

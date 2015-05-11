@@ -21,6 +21,7 @@
 #include "php_imagick.h"
 #include "php_imagick_defs.h"
 #include "php_imagick_macros.h"
+#include "php_imagick_helpers.h"
 
 #if MagickLibVersion > 0x628
 /* {{{ proto array ImagickPixel::getHSL()
@@ -31,7 +32,7 @@ PHP_METHOD(imagickpixel, gethsl)
 	php_imagickpixel_object *internp;
 	double hue, saturation, luminosity;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -84,47 +85,48 @@ PHP_METHOD(imagickpixel, getcolorvaluequantum)
 	
 	switch (color) {
 
-		case IMAGICKCOLORBLACK:
+		case PHP_IMAGICK_COLOR_BLACK:
 			color_value = PixelGetBlackQuantum(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORBLUE:
+		case PHP_IMAGICK_COLOR_BLUE:
 			color_value = PixelGetBlueQuantum(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORCYAN:
+		case PHP_IMAGICK_COLOR_CYAN:
 			color_value = PixelGetCyanQuantum(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORGREEN:
+		case PHP_IMAGICK_COLOR_GREEN:
 			color_value = PixelGetGreenQuantum(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORRED:
+		case PHP_IMAGICK_COLOR_RED:
 			color_value = PixelGetRedQuantum(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORYELLOW:
+		case PHP_IMAGICK_COLOR_YELLOW:
 			color_value = PixelGetYellowQuantum(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORMAGENTA:
+		case PHP_IMAGICK_COLOR_MAGENTA:
 			color_value = PixelGetMagentaQuantum(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLOROPACITY:
+		case PHP_IMAGICK_COLOR_OPACITY:
 			color_value = PixelGetOpacityQuantum(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORALPHA:
+		case PHP_IMAGICK_COLOR_ALPHA:
 			color_value = PixelGetAlphaQuantum(internp->pixel_wand);
 		break;
 
 		default:
-			IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKPIXEL_CLASS, "Unknown color type", 4);
+			php_imagick_throw_exception (IMAGICKPIXEL_CLASS, "Unknown color type" TSRMLS_CC);
+			return;
 		break;
 	}
-	RETVAL_LONG(color_value);		
+	RETVAL_LONG(color_value);
 }
 /* }}} */
 
@@ -145,44 +147,45 @@ PHP_METHOD(imagickpixel, setcolorvaluequantum)
 
 	switch (color) {
 
-		case IMAGICKCOLORBLACK:
+		case PHP_IMAGICK_COLOR_BLACK:
 			PixelSetBlackQuantum(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORBLUE:
+		case PHP_IMAGICK_COLOR_BLUE:
 			PixelSetBlueQuantum(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORCYAN:
+		case PHP_IMAGICK_COLOR_CYAN:
 			PixelSetCyanQuantum(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORGREEN:
+		case PHP_IMAGICK_COLOR_GREEN:
 			PixelSetGreenQuantum(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORRED:
+		case PHP_IMAGICK_COLOR_RED:
 			PixelSetRedQuantum(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORYELLOW:
+		case PHP_IMAGICK_COLOR_YELLOW:
 			PixelSetYellowQuantum(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORMAGENTA:
+		case PHP_IMAGICK_COLOR_MAGENTA:
 			PixelSetMagentaQuantum(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLOROPACITY:
+		case PHP_IMAGICK_COLOR_OPACITY:
 			PixelSetOpacityQuantum(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORALPHA:
+		case PHP_IMAGICK_COLOR_ALPHA:
 			PixelSetAlphaQuantum(internp->pixel_wand, color_value);
 		break;
 
 		default:
-			IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKPIXEL_CLASS, "Unknown color type", 4);
+			php_imagick_throw_exception (IMAGICKPIXEL_CLASS, "Unknown color type" TSRMLS_CC);
+			return;
 		break;
 	}
 	RETVAL_TRUE;
@@ -196,7 +199,7 @@ PHP_METHOD(imagickpixel, getindex)
 {
 	php_imagickpixel_object *internp;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
@@ -240,18 +243,19 @@ PHP_METHOD(imagickpixel, __construct)
 
 	internp = (php_imagickpixel_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	internp->pixel_wand = NewPixelWand();
-	
+
 	if (!internp->pixel_wand) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKPIXEL_CLASS, "Failed to allocate PixelWand structure", 4);
+		php_imagick_throw_exception (IMAGICKPIXEL_CLASS, "Failed to allocate PixelWand structure" TSRMLS_CC);
+		return;
 	}
 
 	/* If color was given as parameter, set it here.*/
 	if (color_name && color_name_len) {
 		if (PixelSetColor(internp->pixel_wand, color_name) == MagickFalse) {
-			IMAGICK_THROW_IMAGICKPIXEL_EXCEPTION(internp->pixel_wand, "Unable to construct ImagickPixel", 4);
+			php_imagick_throw_exception (IMAGICKPIXEL_CLASS, "Unable to construct ImagickPixel" TSRMLS_CC);
+			return;
 		}
 	}
-	RETURN_TRUE;
 }
 /* }}} */
 
@@ -275,7 +279,8 @@ PHP_METHOD(imagickpixel, setcolor)
 	status = PixelSetColor(internp->pixel_wand, color_name);
 
 	if (status == MagickFalse) {
-		IMAGICK_THROW_IMAGICKPIXEL_EXCEPTION(internp->pixel_wand, "Unable to set ImagickPixel color", 4);
+		php_imagick_convert_imagickpixel_exception (internp->pixel_wand, "Unable to set ImagickPixel color" TSRMLS_CC);
+		return;
 	}
 
 	RETURN_TRUE;
@@ -289,39 +294,11 @@ PHP_METHOD(imagickpixel, clear)
 {
 	php_imagickpixel_object *internp;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
+
 	internp = (php_imagickpixel_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
-
-	if (!internp->pixel_wand) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKPIXEL_CLASS, "ImagickPixel is not allocated", 4);
-	}
-
-	ClearPixelWand(internp->pixel_wand);
-	RETURN_TRUE;
-}
-/* }}} */
-
-/* {{{ proto bool ImagickPixel::destroy()
-	Deallocates resources associated with a PixelWand.
-*/
-PHP_METHOD(imagickpixel, destroy)
-{
-	zval *object;
-	php_imagickpixel_object *internp;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
-		return;
-	}
-	
-	object = getThis();
-	internp = (php_imagickpixel_object *)zend_object_store_get_object(object TSRMLS_CC);
-
-	if (!internp->pixel_wand) {
-		IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKPIXEL_CLASS, "ImagickPixel is not allocated properly", 4);
-	}
 
 	ClearPixelWand(internp->pixel_wand);
 	RETURN_TRUE;
@@ -331,12 +308,15 @@ PHP_METHOD(imagickpixel, destroy)
 /* {{{ proto bool ImagickPixel::isSimilar(float fuzz)
 	Returns true if the distance between two colors is less than the specified distance.
 */
-PHP_METHOD(imagickpixel, issimilar)
+static
+void s_is_pixelwand_similar(INTERNAL_FUNCTION_PARAMETERS, zend_bool use_quantum)
 {
 	zval *param;
 	double fuzz;
-	php_imagickpixel_object *internp, *internp_second;
+	php_imagickpixel_object *internp;
 	MagickBooleanType status;
+	PixelWand *color_wand;
+	zend_bool allocated;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zd", &param, &fuzz) == FAILURE) {
@@ -344,15 +324,39 @@ PHP_METHOD(imagickpixel, issimilar)
 	}
 
 	internp = (php_imagickpixel_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
-	IMAGICK_CAST_PARAMETER_TO_COLOR(param, internp_second, 4);
 
-	status = IsPixelWandSimilar(internp->pixel_wand, internp_second->pixel_wand, fuzz);
+	color_wand = php_imagick_zval_to_pixelwand (param, IMAGICKPIXEL_CLASS, &allocated TSRMLS_CC);
+	if (!color_wand)
+		return;
 
-	if(status == MagickFalse) {
+	status = IsPixelWandSimilar(internp->pixel_wand, color_wand, (use_quantum ? (QuantumRange * fuzz) : fuzz));
+	if (allocated)
+		color_wand = DestroyPixelWand (color_wand);
+
+	if (status == MagickFalse) {
 		RETURN_FALSE;
 	}
 
 	RETURN_TRUE;
+}
+
+
+/* {{{ proto bool ImagickPixel::isSimilar(ImagickPixel pixel, float fuzz)
+	Returns true if the distance between two colors is less than the specified distance.
+*/
+PHP_METHOD(imagickpixel, issimilar)
+{
+	IMAGICK_METHOD_DEPRECATED_USE_INSTEAD("ImagickPixel", "isSimilar", "ImagickPixel", "isPixelSimilar");
+	s_is_pixelwand_similar (INTERNAL_FUNCTION_PARAM_PASSTHRU, 0);
+}
+/* }}} */
+
+/* {{{ proto bool ImagickPixel::isPixelSimilar(ImagickPixel pixel, float fuzz)
+	Returns true if the distance between two colors is less than the specified distance.
+*/
+PHP_METHOD(imagickpixel, ispixelsimilar)
+{
+	s_is_pixelwand_similar (INTERNAL_FUNCTION_PARAM_PASSTHRU, 1);
 }
 /* }}} */
 
@@ -361,6 +365,7 @@ PHP_METHOD(imagickpixel, issimilar)
 */
 PHP_METHOD(imagickpixel, getcolorvalue)
 {
+	php_imagick_color_t color_enum;
 	php_imagickpixel_object *internp;
 	long color;
 	double color_value = 0;
@@ -372,52 +377,60 @@ PHP_METHOD(imagickpixel, getcolorvalue)
 
 	internp = (php_imagickpixel_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	switch (color) {
+	if (color <= PHP_IMAGICK_COLOR_MIN || color >= PHP_IMAGICK_COLOR_MAX) {
+		php_imagick_throw_exception (IMAGICKPIXEL_CLASS, "Unknown color type" TSRMLS_CC);
+		return;
+	}
 
-		case IMAGICKCOLORBLACK:
+	color_enum = color;
+
+	switch (color_enum) {
+
+		case PHP_IMAGICK_COLOR_BLACK:
 			color_value = PixelGetBlack(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORBLUE:
+		case PHP_IMAGICK_COLOR_BLUE:
 			color_value = PixelGetBlue(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORCYAN:
+		case PHP_IMAGICK_COLOR_CYAN:
 			color_value = PixelGetCyan(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORGREEN:
+		case PHP_IMAGICK_COLOR_GREEN:
 			color_value = PixelGetGreen(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORRED:
+		case PHP_IMAGICK_COLOR_RED:
 			color_value = PixelGetRed(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORYELLOW:
+		case PHP_IMAGICK_COLOR_YELLOW:
 			color_value = PixelGetYellow(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORMAGENTA:
+		case PHP_IMAGICK_COLOR_MAGENTA:
 			color_value = PixelGetMagenta(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLOROPACITY:
+		case PHP_IMAGICK_COLOR_OPACITY:
 			color_value = PixelGetOpacity(internp->pixel_wand);
 		break;
 
-		case IMAGICKCOLORALPHA:
+		case PHP_IMAGICK_COLOR_ALPHA:
 			color_value = PixelGetAlpha(internp->pixel_wand);
 		break;
 
 #if MagickLibVersion > 0x628
-		case IMAGICKCOLORFUZZ:
+		case PHP_IMAGICK_COLOR_FUZZ:
 			color_value = PixelGetFuzz(internp->pixel_wand);
 		break;
 #endif
 
 		default:
-			IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKPIXEL_CLASS, "Unknown color type", 4);
+			php_imagick_throw_exception (IMAGICKPIXEL_CLASS, "Unknown color type" TSRMLS_CC);
+			return;
 		break;
 	}
 	RETVAL_DOUBLE(color_value);
@@ -429,6 +442,7 @@ PHP_METHOD(imagickpixel, getcolorvalue)
 */
 PHP_METHOD(imagickpixel, setcolorvalue)
 {
+	php_imagick_color_t color_enum;
 	php_imagickpixel_object *internp;
 	long color;
 	double color_value;
@@ -437,55 +451,63 @@ PHP_METHOD(imagickpixel, setcolorvalue)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ld", &color, &color_value) == FAILURE) {
 		return;
 	}
-	
+
 	internp = (php_imagickpixel_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	switch (color) {
+	if (color <= PHP_IMAGICK_COLOR_MIN || color >= PHP_IMAGICK_COLOR_MAX) {
+		php_imagick_throw_exception (IMAGICKPIXEL_CLASS, "Unknown color type" TSRMLS_CC);
+		return;
+	}
 
-		case IMAGICKCOLORBLACK:
+	color_enum = color;
+
+	switch (color_enum) {
+
+		case PHP_IMAGICK_COLOR_BLACK:
 			PixelSetBlack(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORBLUE:
+		case PHP_IMAGICK_COLOR_BLUE:
 			PixelSetBlue(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORCYAN:
+		case PHP_IMAGICK_COLOR_CYAN:
 			PixelSetCyan(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORGREEN:
+		case PHP_IMAGICK_COLOR_GREEN:
 			PixelSetGreen(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORRED:
+		case PHP_IMAGICK_COLOR_RED:
 			PixelSetRed(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORYELLOW:
+		case PHP_IMAGICK_COLOR_YELLOW:
 			PixelSetYellow(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORMAGENTA:
+		case PHP_IMAGICK_COLOR_MAGENTA:
 			PixelSetMagenta(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLOROPACITY:
+		case PHP_IMAGICK_COLOR_OPACITY:
 			PixelSetOpacity(internp->pixel_wand, color_value);
 		break;
 
-		case IMAGICKCOLORALPHA:
+		case PHP_IMAGICK_COLOR_ALPHA:
 			PixelSetAlpha(internp->pixel_wand, color_value);
 		break;
 
 #if MagickLibVersion > 0x628
-		case IMAGICKCOLORFUZZ:
+		case PHP_IMAGICK_COLOR_FUZZ:
 			PixelSetFuzz(internp->pixel_wand, color_value);
 		break;
 #endif
 
 		default:
-			IMAGICK_THROW_EXCEPTION_WITH_MESSAGE(IMAGICKPIXEL_CLASS, "Unknown color type", 4);
+			php_imagick_throw_exception (IMAGICKPIXEL_CLASS, "Unknown color type" TSRMLS_CC);
+			return;
 		break;
 	}
 	RETVAL_TRUE;
@@ -520,18 +542,18 @@ PHP_METHOD(imagickpixel, getcolor)
 		add_assoc_double(return_value, "g", green);
 		add_assoc_double(return_value, "b", blue);
 		add_assoc_double(return_value, "a", alpha);
-	
+
 	} else {
 
 		/* TODO: should this be quantum range instead of hardcoded 255.. */
-		red   = PixelGetRed(internp->pixel_wand ) * 255;
-		green = PixelGetGreen(internp->pixel_wand ) * 255;
-		blue  = PixelGetBlue(internp->pixel_wand ) * 255;
+		red   = PixelGetRed(internp->pixel_wand)   * 255;
+		green = PixelGetGreen(internp->pixel_wand) * 255;
+		blue  = PixelGetBlue(internp->pixel_wand)  * 255;
 		alpha = PixelGetAlpha(internp->pixel_wand);
 
-		add_assoc_long(return_value, "r", (int)(red > 0.0 ? red + 0.5 : red - 0.5));
-		add_assoc_long(return_value, "g", (int)(green > 0.0 ? green + 0.5 : green - 0.5));
-		add_assoc_long(return_value, "b", (int)(blue > 0.0 ? blue + 0.5 : blue - 0.5));
+		add_assoc_long(return_value, "r", (long) (red   > 0.0 ? red   + 0.5 : red   - 0.5));
+		add_assoc_long(return_value, "g", (long) (green > 0.0 ? green + 0.5 : green - 0.5));
+		add_assoc_long(return_value, "b", (long) (blue  > 0.0 ? blue  + 0.5 : blue  - 0.5));
 		add_assoc_long(return_value, "a", alpha);
 	}
 
@@ -547,16 +569,16 @@ PHP_METHOD(imagickpixel, getcolorasstring)
 	php_imagickpixel_object *internp;
 	char *color_string;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
+
 	internp = (php_imagickpixel_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
 	color_string = PixelGetColorAsString(internp->pixel_wand);
 	ZVAL_STRING(return_value, color_string, 1);
 
-	IMAGICK_FREE_MEMORY(char *, color_string);
+	IMAGICK_FREE_MAGICK_MEMORY(color_string);
 	return;
 }
 /* }}} */
@@ -570,20 +592,24 @@ PHP_METHOD(imagickpixel, clone)
 	php_imagickpixel_object *intern_return;
 	PixelWand *pixel_wand;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
-	
+
 	IMAGICK_METHOD_DEPRECATED("ImagickPixel", "clone");
 
 	internp = (php_imagickpixel_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	IMAGICK_CLONE_PIXELWAND(internp->pixel_wand, pixel_wand);
+	pixel_wand = php_imagick_clone_pixelwand (internp->pixel_wand);
+	if (!pixel_wand) {
+		php_imagick_throw_exception (IMAGICKPIXEL_CLASS, "Failed to allocate" TSRMLS_CC);
+		return;
+	}
 
 	object_init_ex(return_value, php_imagickpixel_sc_entry);
 	intern_return = (php_imagickpixel_object *)zend_object_store_get_object(return_value TSRMLS_CC);
 
-	IMAGICKPIXEL_REPLACE_PIXELWAND(intern_return, pixel_wand);
+	php_imagick_replace_pixelwand(intern_return, pixel_wand);
 	return;
 }
 /* }}} */
@@ -595,7 +621,7 @@ PHP_METHOD(imagickpixel, getcolorcount)
 {
 	php_imagickpixel_object *internp;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
+	if (zend_parse_parameters_none() == FAILURE) {
 		return;
 	}
 	
