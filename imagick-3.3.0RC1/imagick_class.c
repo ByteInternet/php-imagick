@@ -272,6 +272,7 @@ PHP_METHOD(imagick, contraststretchimage)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 
 /* {{{ proto int Imagick::getImageMatte()
 	Returns true if the image has a matte channel otherwise false
@@ -300,6 +301,8 @@ PHP_METHOD(imagick, getimagematte)
 	}
 }
 /* }}} */
+
+#endif
 
 /* {{{ proto bool Imagick::setImageMatte(bool matte)
 	Sets the image matte channel
@@ -430,7 +433,7 @@ PHP_METHOD(imagick, shadeimage)
 PHP_METHOD(imagick, getsizeoffset)
 {
 	php_imagick_object *intern;
-	long offset;
+	ssize_t offset;
 	MagickBooleanType status;
 
 	if (zend_parse_parameters_none() == FAILURE) {
@@ -535,7 +538,7 @@ PHP_METHOD(imagick, randomthresholdimage)
 }
 /* }}} */
 
-/* {{{ proto string Imagick::roundCornersImage(float x_rounding, float y_rounding[, float stroke_width, float displace, float size_correction] )
+/* {{{ proto string Imagick::roundCornersImage(float x_rounding, float y_rounding[, float stroke_width = 10[, float displace = 5[, float size_correction = -6]]] )
    Rounds image corners
 */
 PHP_METHOD(imagick, roundcornersimage)
@@ -718,7 +721,7 @@ PHP_METHOD(imagick, setiteratorindex)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::transformimage(string crop, string geometry )
+/* {{{ proto Imagick Imagick::transformimage(string crop, string geometry )
 	Comfortability method for crop and resize
 */
 PHP_METHOD(imagick, transformimage)
@@ -903,6 +906,78 @@ PHP_METHOD(imagick, setimageproperty)
 	}
 
 	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto bool Imagick::deleteimageproperty(string name)
+	Deletes an image property.
+*/
+PHP_METHOD(imagick, deleteimageproperty)
+{
+	php_imagick_object *intern;
+	char *name;
+	int name_len;
+	MagickBooleanType status;
+
+	Image *image;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
+
+	image = GetImageFromMagickWand(intern->magick_wand);
+	status = DeleteImageProperty(image, name);
+
+	if (status == MagickFalse) {
+		RETURN_FALSE;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+
+/* {{{ proto bool Imagick::identifyformat(string embedText)
+	Replaces any embedded formatting characters with the appropriate image property and returns the interpreted text. See http://www.imagemagick.org/script/escape.php for escape sequences.
+*/
+PHP_METHOD(imagick, identifyformat)
+{
+	php_imagick_object *intern;
+	char *embedText;
+	int embedText_len;
+	char *result;
+
+	ImageInfo *image_info;
+	Image *image;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &embedText, &embedText_len) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0) {
+		return;
+	}
+
+	image_info = AcquireImageInfo();
+	image = GetImageFromMagickWand(intern->magick_wand);
+	result = InterpretImageProperties(image_info, image, embedText);
+	image_info = DestroyImageInfo(image_info);
+
+	if (result) {
+		RETVAL_STRING(result, 1);
+		IMAGICK_FREE_MAGICK_MEMORY(result);
+
+		return;
+	}
+
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -1095,6 +1170,7 @@ PHP_METHOD(imagick, setimageorientation)
 /* }}} */
 #endif
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 #if MagickLibVersion > 0x634
 /* {{{ proto Imagick Imagick::paintFloodfillImage(mixed fill, float fuzz, mixed bordercolor, int x, int y[, int channel])
    Sets the image orientation
@@ -1151,6 +1227,7 @@ PHP_METHOD(imagick, paintfloodfillimage)
 }
 /* }}} */
 #endif
+#endif
 
 #if MagickLibVersion > 0x635
 /* {{{ proto Imagick Imagick::clutImage(Imagick lookup[, int channel] )
@@ -1164,7 +1241,7 @@ PHP_METHOD(imagick, clutimage)
 	long channel = DefaultChannels;
 
 	/* Parse parameters given to function */
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|d", &objvar, php_imagick_sc_entry, &channel) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|l", &objvar, php_imagick_sc_entry, &channel) == FAILURE) {
 		return;
 	}
 
@@ -1196,7 +1273,8 @@ PHP_METHOD(imagick, getimageproperties)
 	zend_bool values = 1;
 	char *pattern = "*", **properties, *property;
 	int pattern_len;
-	unsigned long properties_count, i;
+	unsigned long i;
+	size_t properties_count;
 	php_imagick_object *intern;
 
 	/* Parse parameters given to function */
@@ -1245,9 +1323,9 @@ PHP_METHOD(imagick, getimageprofiles)
 	zend_bool values = 1;
 	char *pattern = "*", **profiles, *profile;
 	int pattern_len;
-	unsigned long profiles_count, i;
+	unsigned long i;
 	php_imagick_object *intern;
-	size_t length;
+	size_t length, profiles_count;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|sb", &pattern, &pattern_len, &values) == FAILURE) {
@@ -1270,7 +1348,7 @@ PHP_METHOD(imagick, getimageprofiles)
 	if (values) {
 
 		for (i = 0; i < profiles_count; i++) {
-			profile = MagickGetImageProfile(intern->magick_wand, profiles[i], &length);
+			profile = (char *)MagickGetImageProfile(intern->magick_wand, profiles[i], &length);
 			add_assoc_stringl(return_value, profiles[i], profile, length, 1);
 			IMAGICK_FREE_MAGICK_MEMORY(profile);
 		}
@@ -1554,6 +1632,7 @@ PHP_METHOD(imagick, animateimages)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto bool Imagick::recolorImage(array matrix)
 	Translate, scale, shear, or rotate image colors
 */
@@ -1602,6 +1681,7 @@ PHP_METHOD(imagick, recolorimage)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
 #endif
 
 #if MagickLibVersion > 0x636
@@ -2548,7 +2628,7 @@ PHP_METHOD(imagick, functionimage)
 	array = php_imagick_zval_to_double_array(arguments, &num_elements TSRMLS_CC);
 
 	if (!array) {
-		php_imagick_throw_exception(IMAGICK_CLASS, "The arguments array contains disallowed characters" TSRMLS_CC);
+		php_imagick_throw_exception(IMAGICK_CLASS, "The arguments array contains disallowed characters or is empty." TSRMLS_CC);
 		return;
 	}
 
@@ -2831,14 +2911,13 @@ PHP_METHOD(imagick, clampimage)
 #endif
 
 #if MagickLibVersion > 0x667
-/* {{{ proto boolean Imagick::smushimages(boolean stack, int offset)
+/* {{{ proto Imagick Imagick::smushimages(boolean stack, int offset)
    Takes all images from the current image pointer to the end of the image list and smushs
    them to each other top-to-bottom if the stack parameter is true, otherwise left-to-right.
 */
 PHP_METHOD(imagick, smushimages)
 {
 	php_imagick_object *intern, *intern_return;
-	MagickBooleanType status;
 	zend_bool stack;
 	long offset;
 	MagickWand *retwand;
@@ -2895,7 +2974,7 @@ PHP_METHOD(imagick, __construct)
 		struct php_imagick_file_t file = {0};
 
 		if (!php_imagick_file_init(&file, Z_STRVAL_P(files), Z_STRLEN_P(files) TSRMLS_CC)) {
-			php_imagick_throw_exception(IMAGICK_CLASS, "The filename is too long" TSRMLS_CC);
+			php_imagick_throw_exception(IMAGICK_CLASS, "Invalid filename provided" TSRMLS_CC);
 			return;
 		}
 		rc = php_imagick_read_file(intern, &file, ImagickReadImage TSRMLS_CC);
@@ -2922,7 +3001,7 @@ PHP_METHOD(imagick, __construct)
 			}
 
 			if (!php_imagick_file_init(&file, Z_STRVAL_PP(ppzval), Z_STRLEN_PP(ppzval) TSRMLS_CC)) {
-				php_imagick_throw_exception(IMAGICK_CLASS, "The filename is too long" TSRMLS_CC);
+				php_imagick_throw_exception(IMAGICK_CLASS, "Invalid filename provided" TSRMLS_CC);
 				return;
 			}
 
@@ -2982,8 +3061,9 @@ PHP_METHOD(imagick, __tostring)
 PHP_METHOD(imagick, count)
 {
 	php_imagick_object *intern;
+	long mode = 0;
 
-	if (zend_parse_parameters_none() == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &mode) == FAILURE) {
 		return;
 	}
 
@@ -2998,9 +3078,10 @@ PHP_METHOD(imagick, count)
 PHP_METHOD(imagick, queryformats)
 {
 	char **supported_formats;
-	unsigned long num_formats = 0, i;
+	unsigned long i;
 	char *pattern = "*";
 	int pattern_len = 1;
+	size_t num_formats = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|s", &pattern, &pattern_len) == FAILURE) {
 		return;
@@ -3025,9 +3106,10 @@ PHP_METHOD(imagick, queryformats)
 PHP_METHOD(imagick, queryfonts)
 {
 	char **fonts;
-	unsigned long num_fonts = 0, i;
+	unsigned long i;
 	char *pattern = "*";
 	int pattern_len = 1;
+	size_t num_fonts;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|s", &pattern, &pattern_len) == FAILURE) {
 		return;
@@ -3203,7 +3285,7 @@ PHP_METHOD(imagick, readimage)
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
 	if (!php_imagick_file_init(&file, filename, filename_len TSRMLS_CC)) {
-		php_imagick_throw_exception(IMAGICK_CLASS, "The filename is too long" TSRMLS_CC);
+		php_imagick_throw_exception(IMAGICK_CLASS, "Invalid filename provided" TSRMLS_CC);
 		return;
 	}
 
@@ -3248,7 +3330,7 @@ PHP_METHOD(imagick, readimages)
 		}
 
 		if (!php_imagick_file_init(&file, Z_STRVAL_PP(ppzval), Z_STRLEN_PP(ppzval) TSRMLS_CC)) {
-			php_imagick_throw_exception(IMAGICK_CLASS, "The filename is too long" TSRMLS_CC);
+			php_imagick_throw_exception(IMAGICK_CLASS, "Invalid filename provided" TSRMLS_CC);
 			return;
 		}
 
@@ -3283,7 +3365,7 @@ PHP_METHOD(imagick, pingimage)
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 
 	if (!php_imagick_file_init(&file, filename, filename_len TSRMLS_CC)) {
-		php_imagick_throw_exception(IMAGICK_CLASS, "The filename is too long" TSRMLS_CC);
+		php_imagick_throw_exception(IMAGICK_CLASS, "Invalid filename provided" TSRMLS_CC);
 		return;
 	}
 	rc = php_imagick_read_file(intern, &file, ImagickPingImage TSRMLS_CC);
@@ -3297,7 +3379,7 @@ PHP_METHOD(imagick, pingimage)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::readImageFile(resource filehandle )
+/* {{{ proto bool Imagick::readImageFile(resource filehandle[, string filename])
     Reads image from open filehandle
 */
 PHP_METHOD(imagick, readimagefile)
@@ -3829,6 +3911,7 @@ PHP_METHOD(imagick, coalesceimages)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto bool Imagick::colorFloodfillImage(ImagickPixel fill, double fuzz, ImagickPixel bordercolor, int x, int y)
 	Changes the color value of any pixel that matches target and is an immediate neighbor.
 */
@@ -3881,6 +3964,7 @@ PHP_METHOD(imagick, colorfloodfillimage)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
 
 /* {{{ proto Imagick Imagick::combineImages()
 	Combines one or more images into a single image. The grayscale value of the pixels of each image in the sequence is assigned in order to the specified channels of the combined image. The typical ordering would be image 1 => Red, 2 => Green, 3 => Blue, etc.
@@ -4103,7 +4187,7 @@ PHP_METHOD(imagick, newpseudoimage)
 	}
 
 	if (!php_imagick_file_init(&file, pseudo_string, pseudo_string_len TSRMLS_CC)) {
-		php_imagick_throw_exception(IMAGICK_CLASS, "The filename is too long" TSRMLS_CC);
+		php_imagick_throw_exception(IMAGICK_CLASS, "Invalid filename provided" TSRMLS_CC);
 		return;
 	}
 	rc = php_imagick_read_file(intern, &file, ImagickReadImage TSRMLS_CC);
@@ -4167,6 +4251,41 @@ PHP_METHOD(imagick, implodeimage)
 }
 /* }}} */
 
+#if MagickLibVersion >= 0x658
+//Only stable as of 658
+//http://upstream-tracker.org/compat_reports/imagemagick/6.5.7.7_to_6.5.7.8/abi_compat_report.html
+
+/* {{{ proto bool Imagick::inversefouriertransformimage(Imagick complement, bool magnitude)
+*/
+PHP_METHOD(imagick, inversefouriertransformimage)
+{
+	php_imagick_object *intern, *intern_complement;
+	zval *complement_obj;
+	zend_bool magnitude;
+	MagickBooleanType status;
+
+	/* Parse parameters given to function */
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Ob", &complement_obj, php_imagick_sc_entry, &magnitude) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
+
+	intern_complement = (php_imagick_object *)zend_object_store_get_object(complement_obj TSRMLS_CC);
+	status =  MagickInverseFourierTransformImage(intern->magick_wand, intern_complement->magick_wand, magnitude);
+
+	/* No magick is going to happen */
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to inversefouriertransformimage image" TSRMLS_CC);
+		return;
+	}
+	RETURN_TRUE;
+}
+/* }}} */
+#endif
+
 /* {{{ proto bool Imagick::levelImage(float blackPoint, float gamma, float whitePoint[, int channel] )
 	Adjusts the levels of an image by scaling the colors falling between specified white and black points to the full available quantum range. The parameters provided represent the black, mid, and white points. The black point specifies the darkest color in the image. Colors darker than the black point are set to zero. Mid point specifies a gamma correction to apply to the image.  White point specifies the lightest color in the image. Colors brighter than the white point are set to the maximum quantum value.
 */
@@ -4224,6 +4343,7 @@ PHP_METHOD(imagick, magnifyimage)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto bool Imagick::cycleColormapImage(Imagick map, bool dither)
 	Replaces the colors of an image with the closest color from a reference image.
 */
@@ -4298,7 +4418,9 @@ PHP_METHOD(imagick, mattefloodfillimage)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto bool Imagick::medianFilterImage(float radius)
 	Applies a digital filter that improves the quality of a noisy image.  Each pixel is replaced by the median in a set of neighboring pixels as defined by radius.
 */
@@ -4329,6 +4451,7 @@ PHP_METHOD(imagick, medianfilterimage)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
 
 /* {{{ proto bool Imagick::negateImage(bool gray[, int channel] )
 	Negates the colors in the reference image.  The Grayscale option means that only grayscale values within the image are negated.
@@ -4360,6 +4483,7 @@ PHP_METHOD(imagick, negateimage)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto bool Imagick::paintOpaqueImage(ImagickPixel target, ImagickPixel fill, float fuzz[, int channel])
 	Changes any pixel that matches color with the color defined by fill. Channel argument is supported in ImageMagick 6.2.8+.
 */
@@ -4416,8 +4540,10 @@ PHP_METHOD(imagick, paintopaqueimage)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
+
 #if MagickLibVersion > 0x628
-/* {{{ proto bool Imagick::optimizeImageLayers()
+/* {{{ proto Imagick Imagick::optimizeImageLayers()
 	Compares each image the GIF disposed forms of the previous image in the sequence.  From this it attempts to select the smallest cropped image to replace each frame, while preserving the results of the animation.
 */
 PHP_METHOD(imagick, optimizeimagelayers)
@@ -4447,8 +4573,8 @@ PHP_METHOD(imagick, optimizeimagelayers)
 	return;
 }
 /* }}} */
-#endif
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto bool Imagick::paintTransparentImage(ImagickPixel target, float alpha, float fuzz)
 	Changes any pixel that matches color with the color defined by fill.
 */
@@ -4489,8 +4615,10 @@ PHP_METHOD(imagick, painttransparentimage)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
+#endif
 
-/* {{{ proto bool Imagick::paintTransparentImage(int preview )
+/* {{{ proto Imagick Imagick::previewImages(int preview )
 	Tiles 9 thumbnails of the specified image with an image processing operation applied at varying strengths.
 	This is helpful to quickly pin-point an appropriate parameter for an image processing operation.
 */
@@ -4615,6 +4743,7 @@ PHP_METHOD(imagick, quantizeimages)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto bool Imagick::reduceNoiseImage(float radius)
 	Smooths the contours of an image
 */
@@ -4645,6 +4774,7 @@ PHP_METHOD(imagick, reducenoiseimage)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
 
 /* {{{ proto string Imagick::removeImageProfile(string name)
 	Removes the named image profile and returns it
@@ -4747,7 +4877,8 @@ PHP_METHOD(imagick, sepiatoneimage)
 /* {{{ proto bool Imagick::setImageBias(float bias)
 	Sets the image bias
 */
-PHP_METHOD(imagick, setimagebias)
+static
+void s_set_image_bias(INTERNAL_FUNCTION_PARAMETERS, zend_bool use_quantum)
 {
 	php_imagick_object *intern;
 	double bias;
@@ -4762,6 +4893,10 @@ PHP_METHOD(imagick, setimagebias)
 	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
 		return;
 
+	if (use_quantum) {
+		bias *= QuantumRange;
+	}
+
 	status = MagickSetImageBias(intern->magick_wand, bias);
 
 	/* No magick is going to happen */
@@ -4772,6 +4907,29 @@ PHP_METHOD(imagick, setimagebias)
 	RETURN_TRUE;
 }
 /* }}} */
+
+
+/* {{{ proto bool Imagick::setImageBiasQuantum(float bias)
+	Sets the image bias. Bias should be scaled with 0 = no adjustment, 1 = quantum value
+*/
+PHP_METHOD(imagick, setimagebiasquantum)
+{
+	s_set_image_bias (INTERNAL_FUNCTION_PARAM_PASSTHRU, 1);
+}
+/* }}} */
+
+
+/* {{{ proto bool Imagick::setImageBias(float bias)
+	Sets the image bias. Bias should be scaled with 0 = no adjustment, 2^^x = adjust black to white
+	where x = the quantum depth ImageMagick was compiled with
+*/
+PHP_METHOD(imagick, setimagebias)
+{
+	s_set_image_bias (INTERNAL_FUNCTION_PARAM_PASSTHRU, 0);
+}
+/* }}} */
+
+
 
 /* {{{ proto bool Imagick::setImageBluePrimary(float x,float y)
 	Sets the image chromaticity blue primary point
@@ -5193,19 +5351,19 @@ PHP_METHOD(imagick, setimagewhitepoint)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::sigmoidalContrastImage(bool sharpen, float alpha, float beta[, int channel])
+/* {{{ proto bool Imagick::sigmoidalContrastImage(bool sharpen, float contrast, float midpoint[, int channel])
 	Adjusts the contrast of an image with a non-linear sigmoidal contrast algorithm.  Increase the contrast of the image using a sigmoidal transfer function without saturating highlights or shadows.  Contrast indicates how much to increase the contrast (0 is none; 3 is typical; 20 is pushing it); mid-point indicates where midtones fall in the resultant image (0 is white; 50 is middle-gray; 100 is black).  Set sharpen to true to increase the image contrast otherwise the contrast is reduced.
 */
 PHP_METHOD(imagick, sigmoidalcontrastimage)
 {
 	php_imagick_object *intern;
 	zend_bool sharpen;
-	double alpha, beta;
+	double contrast, midpoint;
 	MagickBooleanType status;
 	long channel = DefaultChannels;
 
 	/* Parse parameters given to function */
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "bdd|l", &sharpen, &alpha, &beta, &channel) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "bdd|l", &sharpen, &contrast, &midpoint, &channel) == FAILURE) {
 		return;
 	}
 
@@ -5213,7 +5371,7 @@ PHP_METHOD(imagick, sigmoidalcontrastimage)
 	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
 		return;
 
-	status = MagickSigmoidalContrastImageChannel(intern->magick_wand, channel, sharpen, alpha, beta);
+	status = MagickSigmoidalContrastImageChannel(intern->magick_wand, channel, sharpen, contrast, midpoint);
 
 	/* No magick is going to happen */
 	if (status == MagickFalse) {
@@ -5261,7 +5419,7 @@ PHP_METHOD(imagick, stereoimage)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::textureImage(Imagick texture_wand)
+/* {{{ proto Imagick Imagick::textureImage(Imagick texture_wand)
 	Repeatedly tiles the texture image across and down the image canvas.
 */
 PHP_METHOD(imagick, textureimage)
@@ -5330,6 +5488,12 @@ PHP_METHOD(imagick, tintimage)
 	}
 
 	status = MagickTintImage(intern->magick_wand, tint_wand, opacity_wand);
+
+	if (tint_allocated)
+		tint_wand = DestroyPixelWand (tint_wand);
+
+	if (opacity_allocated)
+		opacity_wand = DestroyPixelWand (opacity_wand);
 
 	/* No magick is going to happen */
 	if (status == MagickFalse) {
@@ -5443,7 +5607,7 @@ PHP_METHOD(imagick, cyclecolormapimage)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::deconstructImages()
+/* {{{ proto Imagick Imagick::deconstructImages()
 	Compares each image with the next in a sequence and returns the maximum bounding region of any pixel differences it discovers.
 */
 PHP_METHOD(imagick, deconstructimages)
@@ -5474,8 +5638,8 @@ PHP_METHOD(imagick, deconstructimages)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::getImageRegion(int width, int height, int x, int y)
-	Extracts a region of the image and returns it as a a new wand.
+/* {{{ proto Imagick Imagick::getImageRegion(int width, int height, int x, int y)
+	Extracts a region of the image and returns it as a new image.
 */
 PHP_METHOD(imagick, getimageregion)
 {
@@ -5685,6 +5849,43 @@ PHP_METHOD(imagick, evaluateimage)
 }
 /* }}} */
 
+
+#if MagickLibVersion > 0x655
+
+/* {{{ proto bool Imagick::forwardfouriertransformimage(bool magnitude)
+	//http://www.fftw.org/
+	yum install fftw-devel fftw
+	./configure --enable-hdri
+*/
+PHP_METHOD(imagick, forwardfouriertransformimage)
+{
+	php_imagick_object *intern;
+	zend_bool magnitude;
+	MagickBooleanType status;
+
+	/* Parse parameters given to function */
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &magnitude) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
+
+	status = MagickForwardFourierTransformImage(intern->magick_wand, magnitude);
+
+	/* No magick is going to happen */
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to forwardfouriertransformimage image" TSRMLS_CC);
+		return;
+	}
+	RETURN_TRUE;
+}
+/* }}} */
+
+#endif
+
+
 /* {{{ proto array Imagick::getImageGeometry()
 	Returns the width and height as an associative array.
 */
@@ -5713,6 +5914,7 @@ PHP_METHOD(imagick, getimagegeometry)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto ImagickPixel Imagick::getImageAttribute(string key )
 	Returns a named attribute
 */
@@ -5742,6 +5944,7 @@ PHP_METHOD(imagick, getimageattribute)
 	return;
 }
 /* }}} */
+#endif
 
 /* {{{ proto ImagickPixel Imagick::getImageBackgroundColor()
 	Returns the image background color.
@@ -5912,6 +6115,7 @@ PHP_METHOD(imagick, getimagechanneldistortion)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto array Imagick::getImageChannelExtrema(int channel)
 	Gets the extrema for one or more image channels.  Return value is an associative array with the keys "minima" and "maxima".
 */
@@ -5919,7 +6123,7 @@ PHP_METHOD(imagick, getimagechannelextrema)
 {
 	php_imagick_object *intern;
 	long channel_type;
-	unsigned long minima, maxima;
+	size_t minima, maxima;
 	MagickBooleanType status;
 
 	IMAGICK_METHOD_DEPRECATED ("Imagick", "getImageChannelExtrema");
@@ -5946,6 +6150,7 @@ PHP_METHOD(imagick, getimagechannelextrema)
 	return;
 }
 /* }}} */
+#endif
 
 /* {{{ proto array Imagick::getImageChannelMean(int channel)
 	Gets the mean and standard deviation of one or more image channels.  Return value is an associative array with the keys "mean" and "standardDeviation".
@@ -6021,6 +6226,7 @@ PHP_METHOD(imagick, getimagechannelstatistics)
 		add_assoc_long(tmp, "depth", statistics[channels[i]].depth);
 		add_index_zval(return_value, channels[i], tmp);
 	}
+	MagickRelinquishMemory(statistics);
 	return;
 }
 /* }}} */
@@ -6184,13 +6390,14 @@ PHP_METHOD(imagick, getimagedistortion)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto array Imagick::getImageExtrema()
 	Gets the extrema for the image.  Returns an associative array with the keys "min" and "max".
 */
 PHP_METHOD(imagick, getimageextrema)
 {
 	php_imagick_object *intern;
-	unsigned long min, max;
+	size_t min, max;
 	MagickBooleanType status;
 
 	IMAGICK_METHOD_DEPRECATED ("Imagick", "getImageExtrema");
@@ -6217,6 +6424,7 @@ PHP_METHOD(imagick, getimageextrema)
 	return;
 }
 /* }}} */
+#endif
 
 /* {{{ proto long Imagick::getImageDispose()
 	Gets the image disposal method.
@@ -6321,7 +6529,7 @@ PHP_METHOD(imagick, getimagehistogram)
 	php_imagick_object *intern;
 	php_imagickpixel_object *internp;
 	PixelWand **wand_array;
-	unsigned long colors = 0;
+	size_t colors = 0;
 	unsigned long i;
 	zval *tmp_pixelwand;
 
@@ -6442,8 +6650,8 @@ PHP_METHOD(imagick, getimagepage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	unsigned long width, height;
-	long x, y;
+	size_t width, height;
+	ssize_t x, y;
 
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
@@ -7153,6 +7361,7 @@ PHP_METHOD(imagick, hasnextimage)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto int Imagick::getImageIndex()
 	Returns the index of the current active image, within the Imagick object.
 */
@@ -7208,6 +7417,7 @@ PHP_METHOD(imagick, setimageindex)
 
 }
 /* }}} */
+#endif
 
 /* {{{ proto bool Imagick::removeImage()
 	Removes an image from the image list.
@@ -7266,6 +7476,7 @@ PHP_METHOD(imagick, getimagefilename)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto int Imagick::getImageSize()
 	returns the image length in bytes
 */
@@ -7283,18 +7494,19 @@ PHP_METHOD(imagick, getimagesize)
 	return;
 }
 /* }}} */
+#endif
 
 static
 zend_bool s_image_has_format (MagickWand *magick_wand)
 {
 	char *buffer;
+	zend_bool ret;
 	buffer = MagickGetImageFormat(magick_wand);
-	if (!buffer || *buffer == '\0') {
-		if (buffer)
-			MagickRelinquishMemory (buffer);
-		return 0;
+	ret = buffer && *buffer != '\0';
+	if (buffer) {
+		MagickRelinquishMemory (buffer);
 	}
-	return 1;
+	return ret;
 }
 
 /* {{{ proto string Imagick::getImageBlob()
@@ -7516,7 +7728,7 @@ void s_add_named_strings (zval *array, const char *haystack TSRMLS_DC)
 */
 PHP_METHOD(imagick, identifyimage)
 {
-	char *format, *identify, *filename;
+	char *format, *identify, *filename, *signature;
 	php_imagick_object *intern;
 	zend_bool append_raw_string = 0;
 	zval *array;
@@ -7576,7 +7788,10 @@ PHP_METHOD(imagick, identifyimage)
 	    add_assoc_double (array, "y", y);
 	    add_assoc_zval (return_value, "resolution", array);
 	}
-	s_add_assoc_str (return_value, "signature", MagickGetImageSignature (intern->magick_wand), 1);
+
+	signature = MagickGetImageSignature(intern->magick_wand);
+	s_add_assoc_str (return_value, "signature", signature, 1);
+	IMAGICK_FREE_MAGICK_MEMORY(signature);
 
 	if (append_raw_string == 1)
 		add_assoc_string (return_value, "rawOutput", identify, 1);
@@ -7671,6 +7886,7 @@ PHP_METHOD(imagick, setimagefilename)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* PS, DEPRECATED please remove: http://www.imagemagick.org/discourse-server/viewtopic.php?f=6&t=8196 */
 PHP_METHOD(imagick, setimageattribute)
 {
@@ -7700,6 +7916,7 @@ PHP_METHOD(imagick, setimageattribute)
 	}
 	RETURN_TRUE;
 }
+#endif
 
 /* {{{ proto bool Imagick::setImageBackgroundColor(ImagickPixel background)
 	Sets the image background color.
@@ -7766,6 +7983,22 @@ PHP_METHOD(imagick, setimagecompose)
 		return;
 	}
 	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto int Imagick::getImageCompression()
+        Gets the image compression type
+*/
+PHP_METHOD(imagick, getimagecompression)
+{
+	php_imagick_object *intern;
+
+	if (zend_parse_parameters_none() == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	RETVAL_LONG(MagickGetImageCompression(intern->magick_wand));
 }
 /* }}} */
 
@@ -7965,6 +8198,8 @@ PHP_METHOD(imagick, compareimagelayers)
 }
 /* }}} */
 #endif
+
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto Imagick Imagick::flattenImages()
 	Merges a sequence of images.  This is useful for combining Photoshop layers into a single image.
 */
@@ -8001,6 +8236,7 @@ PHP_METHOD(imagick, flattenimages)
 	return;
 }
 /* }}} */
+#endif
 
 /* {{{ proto bool Imagick::flipImage()
 	Creates a vertical mirror image by reflecting the pixels around the central x-axis.
@@ -8755,7 +8991,7 @@ PHP_METHOD(imagick, writeimage)
 	}
 
 	if (!php_imagick_file_init(&file, filename, filename_len TSRMLS_CC)) {
-		php_imagick_throw_exception(IMAGICK_CLASS, "The filename is too long" TSRMLS_CC);
+		php_imagick_throw_exception(IMAGICK_CLASS, "Invalid filename provided" TSRMLS_CC);
 		return;
 	}
 	rc = php_imagick_write_file(intern, &file, ImagickWriteImage, 0 TSRMLS_CC);
@@ -8802,7 +9038,7 @@ PHP_METHOD(imagick, writeimages)
 	}
 
 	if (!php_imagick_file_init(&file, filename, filename_len TSRMLS_CC)) {
-		php_imagick_throw_exception(IMAGICK_CLASS, "The filename is too long" TSRMLS_CC);
+		php_imagick_throw_exception(IMAGICK_CLASS, "Invalid filename provided" TSRMLS_CC);
 		return;
 	}
 	rc = php_imagick_write_file(intern, &file, ImagickWriteImages, adjoin TSRMLS_CC);
@@ -8880,7 +9116,7 @@ PHP_METHOD(imagick, annotateimage)
 
 	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
 	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
-		return;	
+		return;
 
 	internd = (php_imagickdraw_object *)zend_object_store_get_object(objvar TSRMLS_CC);
 
@@ -8950,6 +9186,7 @@ PHP_METHOD(imagick, setimagecompressionquality)
 	RETURN_TRUE;
 }
 /* }}} */
+
 
 /* {{{ proto bool Imagick::compositeImage(Imagick composite_wand, int compose, int x, int y[, int channel] )
 	Composite one image onto another at the specified offset. Channel parameter is ignored in ImageMagick below 6.2.8
@@ -9122,6 +9359,7 @@ PHP_METHOD(imagick, affinetransformimage)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto Imagick Imagick::averageImages()
 	Average a set of images.
 */
@@ -9153,6 +9391,7 @@ PHP_METHOD(imagick, averageimages)
 	return;
 }
 /* }}} */
+#endif
 
 /* {{{ proto bool Imagick::borderImage(ImagickPixel bordercolor, int width, int height)
 	Surrounds the image with a border of the color defined by the bordercolor pixel wand.
@@ -9610,6 +9849,7 @@ PHP_METHOD(imagick, motionblurimage)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto Imagick Imagick::mosaicImages()
 	Inlays an image sequence to form a single coherent picture.  It returns a wand with each image in the sequence composited at the location defined by the page offset of the image.
 */
@@ -9645,6 +9885,7 @@ PHP_METHOD(imagick, mosaicimages)
 
 }
 /* }}} */
+#endif
 
 /* {{{ proto Imagick Imagick::morphImages(int number_frames)
 	Method morphs a set of images.  Both the image pixels and size are linearly interpolated to give the appearance of a meta-morphosis from one image to the next.
@@ -9739,6 +9980,7 @@ PHP_METHOD(imagick, posterizeimage)
 }
 /* }}} */
 
+#if !defined(MAGICKCORE_EXCLUDE_DEPRECATED)
 /* {{{ proto bool Imagick::radialBlurImage(float angle[, int channel])
 	Radial blurs an image.
 */
@@ -9768,6 +10010,7 @@ PHP_METHOD(imagick, radialblurimage)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
 
 /* {{{ proto bool Imagick::raiseImage(int width, int height, int x, int y, bool raise)
 	Creates a simulated three-dimensional button-like effect by lightening and darkening the edges of the image.  Members width and height of raise_info define the width of the vertical and horizontal edge of the effect.
@@ -10239,8 +10482,8 @@ PHP_METHOD(imagick, getpage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	unsigned long width, height;
-	long x, y;
+	size_t width, height;
+	ssize_t x, y;
 
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
@@ -10264,13 +10507,31 @@ PHP_METHOD(imagick, getpage)
 }
 /* }}} */
 
+/* {{{ proto int Imagick::getQuantum()
+	Returns the ImageMagick quantum range as an integer.
+*/
+PHP_METHOD(imagick, getquantum)
+{
+	size_t range;
+
+	if (zend_parse_parameters_none() == FAILURE) {
+		return;
+	}
+
+	MagickGetQuantumRange(&range);
+	ZVAL_LONG(return_value, range);
+	return;
+}
+/* }}} */
+
+
 /* {{{ proto array Imagick::getQuantumDepth()
 	Returns the ImageMagick quantum depth as a string constant.
 */
 PHP_METHOD(imagick, getquantumdepth)
 {
 	const char *quantum_depth;
-	unsigned long depth;
+	size_t depth;
 
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
@@ -10280,7 +10541,7 @@ PHP_METHOD(imagick, getquantumdepth)
 
 	array_init(return_value);
 	add_assoc_long(return_value, "quantumDepthLong", depth);
-	add_assoc_string(return_value, "quantumDepthString", quantum_depth, 1);
+	add_assoc_string(return_value, "quantumDepthString", (char *)quantum_depth, 1);
 
 	return;
 }
@@ -10292,7 +10553,7 @@ PHP_METHOD(imagick, getquantumdepth)
 PHP_METHOD(imagick, getquantumrange)
 {
 	const char *quantum_range;
-	unsigned long range;
+	size_t range;
 
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
@@ -10302,7 +10563,7 @@ PHP_METHOD(imagick, getquantumrange)
 	array_init(return_value);
 
 	add_assoc_long(return_value, "quantumRangeLong", range);
-	add_assoc_string(return_value, "quantumRangeString", quantum_range, 1);
+	add_assoc_string(return_value, "quantumRangeString", (char *)quantum_range, 1);
 	return;
 }
 /* }}} */
@@ -10361,7 +10622,8 @@ PHP_METHOD(imagick, getsamplingfactors)
 {
 	php_imagick_object *intern;
 	double *sampling_factors;
-	unsigned long number_factors = 0, i;
+	unsigned long i;
+	size_t number_factors = 0;
 
 	if (zend_parse_parameters_none() == FAILURE) {
 		return;
@@ -10377,6 +10639,8 @@ PHP_METHOD(imagick, getsamplingfactors)
 		add_next_index_double(return_value, sampling_factors[i]);
 	}
 
+	MagickRelinquishMemory(sampling_factors);
+
 	return;
 }
 /* }}} */
@@ -10387,7 +10651,7 @@ PHP_METHOD(imagick, getsamplingfactors)
 PHP_METHOD(imagick, getsize)
 {
 	php_imagick_object *intern;
-	unsigned long columns, rows;
+	size_t columns, rows;
 	MagickBooleanType status;
 
 	if (zend_parse_parameters_none() == FAILURE) {
@@ -10687,6 +10951,47 @@ PHP_METHOD(imagick, setimageprogressmonitor)
 	RETURN_TRUE;
 }
 
+/* {{{ proto bool Imagick::setProgressMonitor(callable callback)
+	Set a callback that will be called during the processing of the Imagick image.
+*/
+PHP_METHOD(imagick, setprogressmonitor)
+{
+	zval *user_callback;
+
+	php_imagick_object *intern;
+	php_imagick_callback *callback;
+
+	/* Parse parameters given to function */
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &user_callback) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	// Check whether the callback is valid now, rather than failing later
+	if (!user_callback || !zend_is_callable(user_callback, 0, NULL TSRMLS_CC)) {
+		php_imagick_throw_exception(IMAGICK_CLASS, "First argument to setProgressMonitor is expected to be a valid callback" TSRMLS_CC);
+		RETURN_FALSE;
+	}
+
+	callback = (php_imagick_callback *) emalloc(sizeof(php_imagick_callback));
+
+	TSRMLS_SET_CTX(callback->thread_ctx);
+	//We can't free the previous callback as we can't guarantee that
+	//ImageMagick won't use it at some point. There is no 'unbind' function
+	//for previously set 'MagickSetImageProgressMonitor'
+	callback->previous_callback = IMAGICK_G(progress_callback);
+
+	//Add a ref and store the user's callback
+	Z_ADDREF_P(user_callback);
+	callback->user_callback = user_callback;
+
+	//The callback is now valid, store it in the global
+	IMAGICK_G(progress_callback) = callback;
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+
+	MagickSetImageProgressMonitor(intern->magick_wand, php_imagick_progress_monitor_callable, callback);
+	RETURN_TRUE;
+}
+
 /* {{{ proto bool Imagick::setResourceLimit(RESOURCETYPE type, int limit)
 	Sets the limit for a particular resource in megabytes.
 */
@@ -10825,5 +11130,504 @@ PHP_METHOD(imagick, settype)
 	RETURN_TRUE;
 }
 /* }}} */
+
+
+/* {{{ proto bool Imagick::brightnessContrastImage(float brigthness, float contrast[, int channel])
+	Change the brightness and/or contrast of an image. It converts the brightness and contrast parameters into slope and intercept and calls a polynomical function to apply to the image.
+*/
+PHP_METHOD(imagick, brightnesscontrastimage)
+{
+	php_imagick_object *intern;
+	double brightness, contrast;
+	MagickBooleanType status;
+	long channel = DefaultChannels;
+
+	/* Parse parameters given to function */
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|l", &brightness, &contrast, &channel) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
+
+	status = MagickBrightnessContrastImageChannel(intern->magick_wand, channel, brightness, contrast);
+
+	/* No magick is going to happen */
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to brightnesscontrastimage" TSRMLS_CC);
+		return;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+
+#if MagickLibVersion > 0x661
+
+static KernelInfo *php_imagick_getKernelInfo(const double *color_matrix, const size_t order)
+{
+	KernelInfo *kernel_info;
+
+	kernel_info=AcquireKernelInfo(NULL);
+	if (kernel_info == (KernelInfo *) NULL) {
+		return NULL;
+	}
+
+	kernel_info->width = order;
+	kernel_info->height = order;
+	kernel_info->values = (double *)AcquireAlignedMemory(order, order*sizeof(double));
+	memcpy(kernel_info->values, color_matrix, order * order * sizeof(double));
+
+	return kernel_info;
+}
+
+
+/* {{{ proto bool Imagick::ColorMatrixImage(array kernel)
+	apply color transformation to an image. The method permits saturation changes, hue rotation, luminance to alpha, and various other effects. Although variable-sized transformation matrices can be used, typically one uses a 5x5 matrix for an RGBA image and a 6x6 for CMYKA (or RGBA with offsets). The matrix is similar to those used by Adobe Flash except offsets are in column 6 rather than 5 (in support of CMYKA images) and offsets are normalized (divide Flash offset by 255).
+*/
+PHP_METHOD(imagick, colormatriximage)
+{
+	php_imagick_object *intern;
+	MagickBooleanType status;
+	zval *color_matrix_array;
+	double *colors;
+	size_t order = 0;
+	long num_elements = 0;
+	KernelInfo *kernel_color_matrix;
+
+	/* Parse parameters given to function */
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a",  &color_matrix_array) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
+
+	colors = php_imagick_zval_to_double_array(color_matrix_array, &num_elements TSRMLS_CC);
+
+	if (!colors) {
+		php_imagick_throw_exception(IMAGICK_CLASS, "Unable to read color matrix array" TSRMLS_CC);
+		return;
+	}
+	
+	if (num_elements == 25) {
+		order = 5;
+	}
+	else if (num_elements == 36) {
+		order = 6;
+	}
+	else {
+		efree(colors);
+		php_imagick_throw_exception(IMAGICK_CLASS, "Color matrix array must be 5x5 or 6x6" TSRMLS_CC);
+		return;
+	}
+
+	kernel_color_matrix = php_imagick_getKernelInfo(colors, order);
+
+	//TODO - add check that matrix is 5x5 or 6x6? 
+	status = MagickColorMatrixImage(intern->magick_wand, kernel_color_matrix);
+
+	//Free the memory
+	kernel_color_matrix->values = (double *) NULL;
+	kernel_color_matrix = DestroyKernelInfo(kernel_color_matrix);
+	efree(colors);
+
+
+	/* No magick is going to happen */
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to colormatriximage" TSRMLS_CC);
+		return;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+#endif
+
+/* {{{ proto bool Imagick::selectiveBlurImage(float radius, float sigma, float threshold[, int channel])
+	Selectively blur an image within a contrast threshold. It is similar to the unsharpen mask that sharpens everything with contrast above a certain threshold.
+*/
+PHP_METHOD(imagick, selectiveblurimage)
+{
+	php_imagick_object *intern;
+	double brightness, contrast, threshold;
+	MagickBooleanType status;
+	long channel = DefaultChannels;
+
+	/* Parse parameters given to function */
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ddd|l", &brightness, &contrast, &threshold, &channel) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
+
+	status = MagickSelectiveBlurImageChannel(intern->magick_wand, channel, brightness, contrast, threshold);
+
+	/* No magick is going to happen */
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to selectiveblurimage" TSRMLS_CC);
+		return;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+
+
+#if MagickLibVersion >= 0x689
+/* {{{ proto bool Imagick::rotationalblurimage(float angle[, int channel])
+	Rotational blurs an image.
+*/
+PHP_METHOD(imagick, rotationalblurimage)
+{
+	php_imagick_object *intern;
+	MagickBooleanType status;
+	double angle;
+	long channel = DefaultChannels;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d|l", &angle, &channel) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
+
+	status = MagickRotationalBlurImageChannel(intern->magick_wand, channel, angle);
+
+	/* No magick is going to happen */
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to rotational blur image" TSRMLS_CC);
+		return;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+#endif
+
+#if MagickLibVersion >= 0x683
+
+//Technically, this version is available in 0x682. However there was an incompatible 
+//change to the methods signature in a bug release. So only expose it for stable
+//versions.
+//
+//6.8.2.8 - MagickStatisticImage ( MagickWand* p1, enum ChannelType const p2, enum StatisticType const p3, size_t const p4, size_t const p5 ) (6) 
+//6.8.2.9 - MagickStatisticImage ( MagickWand* p1, enum StatisticType const p2, size_t const p3, size_t const p4 )
+
+
+/* {{{ proto bool Imagick::statisticImage(int type, int width, int height[, int channel] )
+	Replace each pixel with corresponding statistic from the neighborhood of the specified width and height.
+*/
+PHP_METHOD(imagick, statisticimage)
+{
+	php_imagick_object *intern;
+	MagickBooleanType status;
+	long type;
+	long width, height;
+	long channel = DefaultChannels;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lll|l", &type, &width, &height, &channel) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
+
+	status = MagickStatisticImageChannel(intern->magick_wand, channel, type, width, height);
+
+	/* No magick is going to happen */
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to statisticImage" TSRMLS_CC);
+		return;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+#endif
+
+#if MagickLibVersion >= 0x652
+/* {{{ proto Imagick Imagick::subimagematch(Imagick subimage[, array &$bestMatch[, float &similarity]])
+	Searches for a subimage in the current image and returns a similarity image such that an exact match location is completely white and if none of the pixels match, black, otherwise some gray level in-between.
+	You can also pass in the optional parameters bestMatch and similarity. After calling the function similarity will be
+	set to the 'score' of the similarity between the subimage and the matching position in the larger image, bestMatch will
+	contain an associative array with elements x, y, width, height that describe the matching region.
+*/
+PHP_METHOD(imagick, subimagematch)
+{
+	php_imagick_object *intern;
+	RectangleInfo best_match_offset;
+	double similarity;
+
+	zval *reference_obj;
+	php_imagick_object *reference_intern;
+	php_imagick_object *intern_return;
+	zval *z_similarity = NULL;
+	zval *z_best_match_offset = NULL;
+
+	//http://devzone.zend.com/317/extension-writing-part-ii-parameters-arrays-and-zvals/
+	MagickWand *new_wand;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|zz", &reference_obj, php_imagick_sc_entry, &z_best_match_offset, &z_similarity) == FAILURE) {
+		return;
+	}
+
+	reference_intern = (php_imagick_object *)zend_object_store_get_object(reference_obj TSRMLS_CC);
+
+//	if (zSimilarity) {
+//		// check for parameter being passed by reference - is there _ANY_ point to this?
+//		if (!Z_ISREF_P(zSimilarity)) {
+//			zend_error(E_WARNING, "Parameter similarity wasn't passed by reference");
+//			RETURN_NULL();
+//		}
+//    }
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
+		return;
+
+	new_wand = MagickSimilarityImage(intern->magick_wand, reference_intern->magick_wand, &best_match_offset, &similarity);
+
+	if (new_wand == NULL) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "subimagematch failed" TSRMLS_CC);
+		return;
+	}
+
+	if (z_similarity) {
+		ZVAL_DOUBLE(z_similarity, similarity);
+	}
+
+	if (z_best_match_offset) {
+		array_init(z_best_match_offset);
+		add_assoc_long(z_best_match_offset, "x", best_match_offset.x);
+		add_assoc_long(z_best_match_offset, "y", best_match_offset.y);
+		add_assoc_long(z_best_match_offset, "width", best_match_offset.width);
+		add_assoc_long(z_best_match_offset, "height", best_match_offset.height);
+	}
+
+	object_init_ex(return_value, php_imagick_sc_entry);
+	intern_return = (php_imagick_object *)zend_object_store_get_object(return_value TSRMLS_CC);
+	php_imagick_replace_magickwand(intern_return, new_wand);
+
+	return;
+}
+/* }}} */
+#endif
+
+
+/* {{{ proto array Imagick::setRegistry(string key, string value)
+	Sets the ImageMagick registry entry named key to value. This is most
+	useful for setting "temporary-path" which controls where ImageMagick
+	creates temporary images e.g. while processing PDFs.
+*/
+PHP_METHOD(imagick, setregistry)
+{
+	MagickBooleanType status;
+	char *key, *value;
+	int key_len, value_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &key, &key_len, &value, &value_len) == FAILURE) {
+		return;
+	}
+
+	status = SetImageRegistry(StringRegistryType, key, value, NULL);
+
+	/* No magick is going to happen */
+	if (status == MagickFalse) {
+		RETURN_FALSE;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+
+/* {{{ proto array Imagick::getRegistry(string key)
+	Get the StringRegistry entry for the named key or false if not set.
+*/
+PHP_METHOD(imagick, getregistry)
+{
+	char *key, *value;
+	int key_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE) {
+		return;
+	}
+
+	value = GetImageRegistry(StringRegistryType, key, NULL);
+
+	if (value != NULL) {
+		ZVAL_STRING(return_value, (char *)value, 1);
+		IMAGICK_FREE_MAGICK_MEMORY(value);
+		return;
+	}
+
+	RETURN_FALSE;
+}
+/* }}} */
+
+
+/* {{{ proto array Imagick::listRegistry()
+	List all the registry settings calls GetImageRegistry. returns an array of all the key/value pairs in the registry 
+*/
+PHP_METHOD(imagick, listregistry)
+{
+	char *registry = NULL;
+	char *value = NULL;
+
+	array_init(return_value);
+
+	ResetImageRegistryIterator();
+	while ((registry = GetNextImageRegistry())) {
+		value = GetImageRegistry(StringRegistryType, registry, NULL);
+		//should this be add_assoc_string(return_value, estrdup(registry), value, 1);
+		add_assoc_string(return_value, registry, value, 1);
+		IMAGICK_FREE_MAGICK_MEMORY(value);
+	}
+
+	return;
+}
+/* }}} */
+
+#if MagickLibVersion >= 0x680
+/* {{{ proto bool Imagick::morphology(int morphologyMethod, int iterations, kernel, [int CHANNEL]  )
+	Applies a user supplied kernel to the image according to the given mophology method.
+	iterations - A value of -1 means loop until no change found. How this is applied may depend on the morphology method. Typically this is a value of 1.
+*/
+PHP_METHOD(imagick, morphology)
+{
+	zval *objvar;
+	php_imagick_object *intern;
+	php_imagickkernel_object *kernel;
+	long morphologyMethod, iterations;
+	MagickBooleanType status;
+	long channel = DefaultChannels;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llO|l", &morphologyMethod, &iterations, &objvar, php_imagickkernel_sc_entry, &channel) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	kernel = (php_imagickkernel_object *)zend_object_store_get_object(objvar TSRMLS_CC);
+
+	status = MagickMorphologyImageChannel(intern->magick_wand,
+			DefaultChannels, morphologyMethod, iterations, kernel->kernel_info);
+
+	// No magick is going to happen
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to morphology image" TSRMLS_CC);
+		return;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+
+/* {{{ proto bool Imagick::filter(ImagickKernel kernel, [int CHANNEL] )
+	Applies a custom convolution kernel to the image.
+*/
+PHP_METHOD(imagick, filter)
+{
+	zval *objvar;
+	php_imagick_object *intern;
+	php_imagickkernel_object *kernel;
+	MagickBooleanType status;
+	long channel = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|l", &objvar, php_imagickkernel_sc_entry, &channel) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	kernel = (php_imagickkernel_object *)zend_object_store_get_object(objvar TSRMLS_CC);
+
+	if ((kernel->kernel_info->width % 2) != 1) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Only odd-sized, square kernels can be applied as a filter." TSRMLS_CC);
+		return;
+	}
+
+	if (kernel->kernel_info->width != kernel->kernel_info->height) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Only odd-sized, square kernels can be applied as a filter." TSRMLS_CC);
+		return;
+	}
+
+	if (channel == 0) {
+		status = MagickFilterImage(intern->magick_wand, kernel->kernel_info);
+	}
+	else {
+		status = MagickFilterImageChannel(intern->magick_wand, channel, kernel->kernel_info);
+	}
+
+	// No magick is going to happen
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Failed to filter image" TSRMLS_CC);
+		return;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+#endif
+
+
+/* {{{ proto int Imagick::setAntiAlias(bool antialias)
+	Set whether antialiasing should be used for operations. On by default.
+*/
+PHP_METHOD(imagick, setantialias)
+{
+	php_imagick_object *intern;
+	zend_bool antialias;
+	MagickBooleanType status;
+
+	/* Parse parameters given to function */
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &antialias) == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	status = MagickSetAntialias(intern->magick_wand, antialias);
+
+	if (status == MagickFalse) {
+		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to setAntiAlias" TSRMLS_CC);
+		return;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto int Imagick::getAntiAlias()
+	get whether antialiasing would be used for operations.
+*/
+PHP_METHOD(imagick, getantialias)
+{
+	php_imagick_object *intern;
+	MagickBooleanType antialias;
+
+	if (zend_parse_parameters_none() == FAILURE) {
+		return;
+	}
+
+	intern = (php_imagick_object *)zend_object_store_get_object(getThis() TSRMLS_CC);
+	antialias = MagickGetAntialias(intern->magick_wand);
+
+	if (antialias == MagickTrue) {
+		RETURN_TRUE;
+	} else {
+		RETURN_FALSE;
+	}
+}
+/* }}} */
+
 
 /* end of Imagick */

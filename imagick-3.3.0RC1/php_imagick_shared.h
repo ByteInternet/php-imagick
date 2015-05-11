@@ -17,33 +17,24 @@
    |         Scott MacVicar <scottmac@php.net>                            |
    +----------------------------------------------------------------------+
 */
-#ifndef PHP_IMAGICK_H
-/* Prevent double inclusion */
-#define PHP_IMAGICK_H
 
-/* Define Extension Properties */
-#define PHP_IMAGICK_EXTNAME    "imagick"
-#define PHP_IMAGICK_VERSION    "3.2.0RC1"
-#define PHP_IMAGICK_EXTNUM     30200
+#ifndef _PHP_IMAGICK_SHARED_H_
+# define _PHP_IMAGICK_SHARED_H_
 
-/* Import configure options when building 
-   outside of the PHP source tree */
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
-
-#ifdef ZTS
-# include "TSRM.h"
-#endif
-
-/* Include PHP Standard Headers */
+/* Should work with ImageMagick 6.x for now */
 #include "php.h"
 
-/* Define the entry point symbol
- * ZE will use when loading this module
- */
-extern zend_module_entry imagick_module_entry;
-#define phpext_imagick_ptr &imagick_module_entry
+#if defined(PHP_WIN32) && defined(IMAGICK_EXPORTS)
+#define PHP_IMAGICK_API __declspec(dllexport)
+#else
+#define PHP_IMAGICK_API PHPAPI
+#endif
 
-#endif /* PHP_IMAGICK_H */
+/*
+	Allow extensions to use the class entries
+*/
+PHP_IMAGICK_API zend_class_entry *php_imagick_get_class_entry();
+PHP_IMAGICK_API zend_class_entry *php_imagickdraw_get_class_entry();
+PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry();
 
+#endif
