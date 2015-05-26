@@ -1,3 +1,13 @@
+php-imagick (3.3.0~rc1-1) unstable; urgency=medium
+
+  * New upstream release
+    + drop debian/patches/imagick_count_php_5.6.patch
+    + drop debian/patches/imagemagick_pkgconfig_detection.patch
+  * debian/tests: Execute upstream test suite
+  * debian/rules: failed test removal no more needed
+
+ -- Guillaume Delacour <gui@iroqwa.org>  Tue, 26 May 2015 02:26:30 +0200
+
 php-imagick (3.2.0~rc1-1) unstable; urgency=medium
 
   * New upstream release, drop 002-use-pkgconfig-for-imagemagick as upstream
