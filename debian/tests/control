@@ -1,2 +1,2 @@
-Test-Command: cd imagick-* && TEST_PHP_EXECUTABLE=/usr/bin/php php ./run-tests.php -q
-Depends: php5-cli, php5-imagick
+Test-Command: cd imagick-* && phpunit --verbose tests
+Depends: php5-cli, php5-imagick, phpunit
