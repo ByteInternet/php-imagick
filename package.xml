@@ -25,10 +25,10 @@ IMPORTANT: Version 2.x API is not compatible with earlier versions.</description
   <email>scottmac@php.net</email>
   <active>no</active>
  </lead>
- <date>2015-03-29</date>
- <time>19:14:13</time>
+ <date>2015-06-01</date>
+ <time>18:44:13</time>
  <version>
-  <release>3.3.0RC1</release>
+  <release>3.3.0RC2</release>
   <api>3.3.0</api>
  </version>
  <stability>
@@ -157,15 +157,15 @@ it is strongly recommended to use the version of ImageMagick that Imagick was co
    <file md5sum="a3fd905419e5f32633ee5d9d794756d7" name="imagemagick.m4" role="src" />
    <file md5sum="7df84d20e4d69d6034929f2ff0a7995a" name="config.w32" role="src" />
    <file md5sum="6077035e65e0b0bbe5a28917282e26b2" name="CREDITS" role="doc" />
-   <file md5sum="0cc9dcd456bcaa94d3f82e932d4062a4" name="imagick.c" role="src" />
-   <file md5sum="4804c482f145fac013121c426c7d7e5f" name="imagick_class.c" role="src" />
+   <file md5sum="89ebfe4921ed5ac96402120629ad9e0c" name="imagick.c" role="src" />
+   <file md5sum="2889dd1d6e4c010aae98799e3b8205f6" name="imagick_class.c" role="src" />
    <file md5sum="6f11990b4611d16f4fa66e5a38fdba37" name="imagickdraw_class.c" role="src" />
    <file md5sum="fa5e2e01f4e92dc4f6e8ab224666f72b" name="imagickpixel_class.c" role="src" />
    <file md5sum="647338a2abad1df5d436aae2687bbdd7" name="imagickpixeliterator_class.c" role="src" />
    <file md5sum="4f1c4d56a2fdc2afeb1148844b74318c" name="imagickkernel_class.c" role="src" />
-   <file md5sum="d4914d451cdd26131ea7e4c735f9be42" name="imagick_helpers.c" role="src" />
+   <file md5sum="5d55204c3498326e761ecd144cd7a117" name="imagick_helpers.c" role="src" />
    <file md5sum="3d7cd06185459b5c7f2423f345f555c4" name="imagick_file.c" role="src" />
-   <file md5sum="600c9bbbbb2099de7719ffd749d4b02a" name="php_imagick.h" role="src">
+   <file md5sum="a598f0c4e9774e04e1c7a7d5ae6ba18c" name="php_imagick.h" role="src">
     <tasks:replace from="@PACKAGE_VERSION@" to="version" type="package-info" />
    </file>
    <file md5sum="995a7c1e1f34b00478dd8bce8b288f93" name="php_imagick_defs.h" role="src" />
@@ -173,7 +173,7 @@ it is strongly recommended to use the version of ImageMagick that Imagick was co
    <file md5sum="1cda4ab0d10299d239db2c0e198b4084" name="php_imagick_macros.h" role="src" />
    <file md5sum="9b4b96d6a870d2962576dd72ec953989" name="php_imagick_shared.h" role="src" />
    <file md5sum="b407a134c7b9a5e3737e26a1f211347d" name="php_imagick_file.h" role="src" />
-   <file md5sum="9b4b19609a899f06117f9f69a6f82417" name="ChangeLog" role="doc" />
+   <file md5sum="190ce8643997009e6a6a645679021328" name="ChangeLog" role="doc" />
    <file md5sum="dd34a70236f008af999de817b93a5e3a" name="LICENSE" role="doc" />
   </dir>
  </contents>
@@ -181,6 +181,8 @@ it is strongly recommended to use the version of ImageMagick that Imagick was co
   <required>
    <php>
     <min>5.1.3</min>
+    <max>7.0.0</max>
+    <exclude>7.0.0</exclude>
    </php>
    <pearinstaller>
     <min>1.4.0</min>

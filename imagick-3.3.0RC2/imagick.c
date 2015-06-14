@@ -2091,7 +2091,7 @@ static zend_function_entry php_imagickpixel_class_methods[] =
 #if MagickLibVersion > 0x628
 	PHP_ME(imagickpixel, gethsl, imagickpixel_zero_args, ZEND_ACC_PUBLIC)
 	PHP_ME(imagickpixel, sethsl, imagickpixel_sethsl_args, ZEND_ACC_PUBLIC)
-	PHP_ME(imagickpixel, getcolorvaluequantum, imagickpixel_zero_args, ZEND_ACC_PUBLIC)
+	PHP_ME(imagickpixel, getcolorvaluequantum, imagickpixel_getcolorvalue_args, ZEND_ACC_PUBLIC)
 	PHP_ME(imagickpixel, setcolorvaluequantum, imagickpixel_setcolorvaluequantum_args, ZEND_ACC_PUBLIC)
 	PHP_ME(imagickpixel, getindex, imagickpixel_zero_args, ZEND_ACC_PUBLIC)
 	PHP_ME(imagickpixel, setindex, imagickpixel_setindex_args, ZEND_ACC_PUBLIC)
@@ -3225,7 +3225,10 @@ PHP_MINFO_FUNCTION(imagick)
 #else
 	php_info_print_table_row(2, "imagick classes", "Imagick, ImagickDraw, ImagickPixel, ImagickPixelIterator");
 #endif
-	php_info_print_table_row(2, "ImageMagick version", MagickGetVersion(&version_number));
+#ifdef MagickVersion
+	php_info_print_table_row(2, "Imagick compiled with ImageMagick version", MagickVersion);
+#endif
+	php_info_print_table_row(2, "Imagick using ImageMagick library version", MagickGetVersion(&version_number));
 	php_info_print_table_row(2, "ImageMagick copyright", MagickGetCopyright());
 	php_info_print_table_row(2, "ImageMagick release date", MagickGetReleaseDate());
 	php_info_print_table_row(2, "ImageMagick number of supported formats: ", buffer);
