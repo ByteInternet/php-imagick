@@ -1,8 +1,9 @@
-php-imagick (3.3.0~rc1-2) unstable; urgency=medium
+php-imagick (3.3.0~rc2-1) unstable; urgency=medium
 
+  * New upstream release
   * Tests: Use phpunit instead of relying on build generated run-test.php
 
- -- Guillaume Delacour <gui@iroqwa.org>  Sun, 07 Jun 2015 15:04:01 +0200
+ -- Guillaume Delacour <gui@iroqwa.org>  Sun, 14 Jun 2015 18:43:17 +0000
 
 php-imagick (3.3.0~rc1-1) unstable; urgency=medium
 

@@ -2,8 +2,8 @@ Description: Hardcode path to /usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.tt
 Forwarded: not-needed
 Author: Thomas Goirand <zigo@debian.org>
 
---- a/imagick-3.3.0RC1/examples/captcha.php
-+++ b/imagick-3.3.0RC1/examples/captcha.php
+--- a/imagick-3.3.0RC2/examples/captcha.php
++++ b/imagick-3.3.0RC2/examples/captcha.php
 @@ -17,7 +17,7 @@
  $ImagickDraw = new ImagickDraw();
  
