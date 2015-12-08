@@ -1,9 +1,10 @@
-php-imagick (3.3.0~rc2-2) unstable; urgency=medium
+php-imagick (3.4.0~rc2-1) unstable; urgency=medium
 
+  * Imported Upstream version 3.4.0~rc2
   * Drop pkg-php-tools build system to support PHP 7.0
   * Rebase patches using gbp pq and drop safe mode support
 
- -- Ondřej Surý <ondrej@debian.org>  Tue, 08 Dec 2015 16:31:07 +0100
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 08 Dec 2015 16:33:02 +0100
 
 php-imagick (3.3.0~rc2-1) unstable; urgency=medium
 
