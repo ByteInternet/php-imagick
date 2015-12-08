@@ -1,7 +1,19 @@
 #!/usr/bin/make -f
 
+PECL_NAME    := $(shell dpkg-parsechangelog -SSource | sed -e s/php-//)
+SOURCE_DIR   := $(shell ls -1d $(PECL_NAME)-*)
+INSTALL_ROOT := $(CURDIR)/debian/php-$(PECL_NAME)
+
 %:
-	dh $@ --buildsystem=phppear --with phppear --with php5
+	dh $@ --with php --sourcedirectory=$(SOURCE_DIR)
 
 override_dh_auto_install:
-	INSTALL_ROOT=$(CURDIR)/debian/tmp dh_auto_install
+	dh_auto_install --sourcedirectory=$(SOURCE_DIR) -- INSTALL_ROOT=$(INSTALL_ROOT)
+
+override_dh_auto_configure:
+	cd $(SOURCE_DIR) && phpize
+	dh_auto_configure --sourcedirectory=$(SOURCE_DIR) -- --enable-$(PECL_NAME)
+
+override_dh_auto_clean:
+	dh_auto_clean --sourcedirectory=$(SOURCE_DIR)
+	cd $(SOURCE_DIR) && phpize --clean
