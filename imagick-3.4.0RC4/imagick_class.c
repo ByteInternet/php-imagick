@@ -338,8 +338,11 @@ PHP_METHOD(imagick, setimagematte)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::adaptiveResizeImage(int width, int height[, bool bestfit])
+/* {{{ proto bool Imagick::adaptiveResizeImage(int width, int height[, bool bestfit[, bool legacy]]])
 	Adaptively resize image with data dependent triangulation
+	If legacy is true, the calculations are done with the small rounding bug that existed in
+	Imagick before 3.4.0. If false, the calculations should produce the same results as 
+	ImageMagick CLI does.
 */
 PHP_METHOD(imagick, adaptiveresizeimage)
 {
@@ -347,8 +350,9 @@ PHP_METHOD(imagick, adaptiveresizeimage)
 	MagickBooleanType status;
 	long width, height, new_width, new_height;
 	zend_bool bestfit = 0;
+	zend_bool legacy = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|b", &width, &height, &bestfit) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|bb", &width, &height, &bestfit, &legacy) == FAILURE) {
 		return;
 	}
 
@@ -356,7 +360,7 @@ PHP_METHOD(imagick, adaptiveresizeimage)
 	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
 		return;
 
-	if (!php_imagick_thumbnail_dimensions(intern->magick_wand, bestfit, width, height, &new_width, &new_height)) {
+	if (!php_imagick_thumbnail_dimensions(intern->magick_wand, bestfit, width, height, &new_width, &new_height, legacy)) {
 		php_imagick_throw_exception(IMAGICK_CLASS, "Invalid image geometry" TSRMLS_CC);
 		return;
 	}
@@ -3883,9 +3887,12 @@ PHP_METHOD(imagick, clear)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::scaleImage(int width, int height[, bool bestfit = false] )
+/* {{{ proto bool Imagick::scaleImage(int width, int height[, bool bestfit = false[, bool legacy]] )
 	Scales the size of an image to the given dimensions. Passing zero as either of
 	the arguments will preserve dimension while scaling.
+	If legacy is true, the calculations are done with the small rounding bug that existed in
+	Imagick before 3.4.0. If false, the calculations should produce the same results as 
+	ImageMagick CLI does.
 */
 PHP_METHOD(imagick, scaleimage)
 {
@@ -3893,9 +3900,10 @@ PHP_METHOD(imagick, scaleimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	zend_bool bestfit = 0;
+	zend_bool legacy = 0;
 
 	/* Parse parameters given to function */
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|b", &width, &height, &bestfit) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|bb", &width, &height, &bestfit, &legacy) == FAILURE) {
 		return;
 	}
 
@@ -3903,7 +3911,7 @@ PHP_METHOD(imagick, scaleimage)
 	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
 		return;
 
-	if (!php_imagick_thumbnail_dimensions(intern->magick_wand, bestfit, width, height, &new_width, &new_height)) {
+	if (!php_imagick_thumbnail_dimensions(intern->magick_wand, bestfit, width, height, &new_width, &new_height, legacy)) {
 		php_imagick_throw_exception(IMAGICK_CLASS, "Invalid image geometry" TSRMLS_CC);
 		return;
 	}
@@ -5770,8 +5778,10 @@ PHP_METHOD(imagick, textureimage)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::tintImage(ImagickPixel tint, ImagickPixel opacity)
-	Applies a color vector to each pixel in the image
+/* {{{ proto bool Imagick::tintImage(ImagickPixel tint, ImagickPixel opacity, bool legacy = false)
+	Applies a color vector to each pixel in the image. The 'opacity' color is a per channel
+	strength factor for how strongly the color should be applied. If legacy is true, the behaviour
+	of this function is incorrect, but consistent with how it behaved before Imagick version 3.4.0
 */
 PHP_METHOD(imagick, tintimage)
 {
@@ -5780,9 +5790,10 @@ PHP_METHOD(imagick, tintimage)
 	MagickBooleanType status;
 	PixelWand *tint_wand, *opacity_wand;
 	zend_bool tint_allocated, opacity_allocated;
+	zend_bool legacy = 0;
 
 	/* Parse parameters given to function */
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zz", &tint_param, &opacity_param) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zz|b", &tint_param, &opacity_param, &legacy) == FAILURE) {
 		return;
 	}
 
@@ -5794,7 +5805,14 @@ PHP_METHOD(imagick, tintimage)
 	if (!tint_wand)
 		return;
 
-	opacity_wand = php_imagick_zval_to_opacity (opacity_param, IMAGICK_CLASS, &opacity_allocated TSRMLS_CC);
+	if (legacy) {
+		opacity_wand = php_imagick_zval_to_opacity(opacity_param, IMAGICK_CLASS, &opacity_allocated TSRMLS_CC);
+		}
+	else {
+		opacity_wand = php_imagick_zval_to_pixelwand(opacity_param, IMAGICK_CLASS, &opacity_allocated TSRMLS_CC);
+	}
+	
+	
 	if (!opacity_wand) {
 		if (tint_allocated)
 			tint_wand = DestroyPixelWand (tint_wand);
@@ -7476,13 +7494,13 @@ PHP_METHOD(imagick, getnumberimages)
 */
 #if MagickLibVersion > 0x631
 static
-zend_bool s_resize_bounding_box(MagickWand *magick_wand, long box_width, long box_height, zend_bool fill)
+zend_bool s_resize_bounding_box(MagickWand *magick_wand, long box_width, long box_height, zend_bool fill, zend_bool legacy)
 {
 	long new_width, new_height;
 	long extent_x, extent_y;
 
 	/* Calculate dimensions */
-	if (!php_imagick_thumbnail_dimensions(magick_wand, 1, box_width, box_height, &new_width, &new_height)) {
+	if (!php_imagick_thumbnail_dimensions(magick_wand, 1, box_width, box_height, &new_width, &new_height, legacy)) {
 		return 0;
 	}
 
@@ -7507,17 +7525,21 @@ zend_bool s_resize_bounding_box(MagickWand *magick_wand, long box_width, long bo
 }
 #endif
 
-/* {{{ proto bool Imagick::thumbnailImage(int columns, int rows[, bool bestfit = false, bool fill = false])
-	 Changes the size of an image to the given dimensions and removes any associated profiles
+/* {{{ proto bool Imagick::thumbnailImage(int columns, int rows[, bool bestfit = false[, bool fill = false[, bool legacy = false]]])
+	Changes the size of an image to the given dimensions and removes any associated profiles.
+	If legacy is true, the calculations are done with the small rounding bug that existed in
+	Imagick before 3.4.0. If false, the calculations should produce the same results as 
+	ImageMagick CLI does.
 */
 PHP_METHOD(imagick, thumbnailimage)
 {
 	long width, height, new_width, new_height;
 	php_imagick_object *intern;
 	zend_bool bestfit = 0, fill = 0;
+	zend_bool legacy = 0;
 
 	/* Parse parameters given to function */
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|bb", &width, &height, &bestfit, &fill) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|bbb", &width, &height, &bestfit, &fill, &legacy) == FAILURE) {
 		return;
 	}
 
@@ -7527,7 +7549,7 @@ PHP_METHOD(imagick, thumbnailimage)
 
 	if (bestfit && fill) {
 #if MagickLibVersion > 0x631
-		if (!s_resize_bounding_box(intern->magick_wand, width, height, fill)) {
+		if (!s_resize_bounding_box(intern->magick_wand, width, height, fill, legacy)) {
 			php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to resize and fill image" TSRMLS_CC);
 		return;
 		}
@@ -7536,7 +7558,7 @@ PHP_METHOD(imagick, thumbnailimage)
 		return;
 #endif
 	} else {
-		if (!php_imagick_thumbnail_dimensions(intern->magick_wand, bestfit, width, height, &new_width, &new_height)) {
+		if (!php_imagick_thumbnail_dimensions(intern->magick_wand, bestfit, width, height, &new_width, &new_height, legacy)) {
 			php_imagick_throw_exception(IMAGICK_CLASS, "Invalid image geometry" TSRMLS_CC);
 			return;
 		}
@@ -7550,12 +7572,104 @@ PHP_METHOD(imagick, thumbnailimage)
 }
 /* }}} */
 
-static
-zend_bool s_crop_thumbnail_image(MagickWand *magick_wand, long desired_width, long desired_height TSRMLS_DC)
-{
-	double ratio_x, ratio_y;
-	long crop_x = 0, crop_y = 0, new_width, new_height;
+/* This is not universally safe to use, but is safe enough for values that will 
+   be encountered for image dimensions.
+*/
+static inline double im_round_helper_class(double value) {
+	if (value >= 0.0) {
+		return floor(value + 0.5);
+	} else {
+		return ceil(value - 0.5);
+	}
+}
 
+static
+void s_calculate_crop(
+	long orig_width, long orig_height,
+	long desired_width, long desired_height,
+	long *new_width, long *new_height,
+	long *offset_x, long *offset_y,
+	zend_bool legacy
+) {
+	double ratio_x, ratio_y;
+	long temp_new_width, temp_new_height;
+
+	ratio_x = ((double) desired_width / (double) orig_width);
+	ratio_y = ((double) desired_height / (double) orig_height);
+
+	if (ratio_x > ratio_y) {
+		temp_new_width  = desired_width;
+
+		if (legacy) {
+			temp_new_height = (long)(ratio_x * (double)orig_height);
+		}
+		else {
+			temp_new_height = im_round_helper_class(ratio_x * (double)orig_height);
+		}
+	} else {
+		temp_new_height = desired_height;
+		if (legacy) {
+			temp_new_width  = (long)(ratio_y * (double)orig_width);
+		}
+		else {
+			temp_new_width  = im_round_helper_class(ratio_y * (double)orig_width);
+		}
+	}
+
+	*new_width = temp_new_width;
+	*new_height = temp_new_height;
+
+	*offset_x = (long) ((temp_new_width - desired_width) / 2);
+	*offset_y = (long) ((temp_new_height - desired_height) / 2);
+}
+
+
+/* {{{ proto array Imagick::calculateCrop(long orig_width, long orig_height, long desired_width, long desired_height[, bool legacy = false])
+	Calculates the cropping values that will be used by a crop operation.
+*/
+PHP_METHOD(imagick, calculatecrop)
+{
+	long orig_width, orig_height;
+	long desired_width, desired_height;
+	long new_width, new_height;
+	long offset_x, offset_y;
+	zend_bool legacy = 0;
+
+	/* Parse parameters given to function */
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llll|b", 
+		&orig_width, &orig_height, &desired_width, &desired_height, &legacy) == FAILURE) {
+		return;
+	}
+
+	if (orig_width <= 0 || orig_height <= 0 ||
+		desired_width <= 0 || desired_height <= 0) {
+		php_imagick_throw_exception(IMAGICK_CLASS, "All values must be above zero." TSRMLS_CC);
+	}
+
+	s_calculate_crop(
+		orig_width, orig_height,
+		desired_width, desired_height,
+		&new_width, &new_height,
+		&offset_x, &offset_y,
+		legacy
+	);
+
+	array_init(return_value);
+	add_assoc_long(return_value, "width", new_width);
+	add_assoc_long(return_value, "height", new_height);
+
+	add_assoc_long(return_value, "offset_x", offset_x);
+	add_assoc_long(return_value, "offset_y", offset_y);
+
+	return;
+}
+/* }}} */
+
+
+static
+zend_bool s_crop_thumbnail_image(MagickWand *magick_wand, long desired_width, long desired_height, zend_bool legacy TSRMLS_DC)
+{
+	long offset_x = 0, offset_y = 0, new_width, new_height;
 	long orig_width  = MagickGetImageWidth(magick_wand);
 	long orig_height = MagickGetImageHeight(magick_wand);
 
@@ -7567,21 +7681,13 @@ zend_bool s_crop_thumbnail_image(MagickWand *magick_wand, long desired_width, lo
 		return 1;
 	}
 
-	ratio_x = ((double) desired_width / (double) orig_width);
-	ratio_y = ((double) desired_height / (double) orig_height);
-
-	if (desired_width == desired_height) {
-		new_width  = desired_width;
-		new_height = desired_height;
-	} else if (ratio_x > ratio_y) {
-		new_width  = desired_width;
-		//TODO - this should be round() when we target C99
-		new_height = ratio_x * (double)orig_height;
-	} else {
-		new_height = desired_height;
-		//TODO - this should be round() when we target C99
-		new_width  = ratio_y * (double)orig_width;
-	}
+	s_calculate_crop(
+		orig_width, orig_height,
+		desired_width, desired_height,
+		&new_width, &new_height,
+		&offset_x, &offset_y,
+		legacy
+	);
 
 	if (MagickThumbnailImage(magick_wand, new_width, new_height) == MagickFalse) {
 		return 0;
@@ -7592,10 +7698,7 @@ zend_bool s_crop_thumbnail_image(MagickWand *magick_wand, long desired_width, lo
 		return 1;
 	}
 
-	crop_x = (long) ((new_width - desired_width) / 2);
-	crop_y = (long) ((new_height - desired_height) / 2);
-
-	if (MagickCropImage(magick_wand, desired_width, desired_height, crop_x, crop_y) == MagickFalse) {
+	if (MagickCropImage(magick_wand, desired_width, desired_height, offset_x, offset_y) == MagickFalse) {
 		return 0;
 	}
 
@@ -7604,16 +7707,19 @@ zend_bool s_crop_thumbnail_image(MagickWand *magick_wand, long desired_width, lo
 }
 
 // 
-/* {{{ proto bool Imagick::cropthumbnailImage(int columns, int rows)
-	 Creates a crop thumbnail
+/* {{{ proto bool Imagick::cropthumbnailImage(int columns, int rows[, bool legacy = false] )
+	Creates a cropped thumbnail at the requested size. If legacy is true, uses the 
+	incorrect behaviour that was present until Imagick 3.4.0. If false it uses the correct
+	behaviour.
 */
 PHP_METHOD(imagick, cropthumbnailimage)
 {
 	long crop_width, crop_height;
+	zend_bool legacy = 0;
 	php_imagick_object *intern;
 
 	/* Parse parameters given to function */
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &crop_width, &crop_height) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|b", &crop_width, &crop_height, &legacy) == FAILURE) {
 		return;
 	}
 
@@ -7622,7 +7728,7 @@ PHP_METHOD(imagick, cropthumbnailimage)
 		return;
 
 	/* The world collapses.. */
-	if (!s_crop_thumbnail_image(intern->magick_wand, crop_width, crop_height TSRMLS_CC)) {
+	if (!s_crop_thumbnail_image(intern->magick_wand, crop_width, crop_height, legacy TSRMLS_CC)) {
 		php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to crop-thumbnail image" TSRMLS_CC);
 		return;
 	}
@@ -8190,8 +8296,6 @@ void s_add_named_strings (zval *array, const char *haystack TSRMLS_DC)
 #endif
 	}
 	efree (buffer);
-
-
 }
 
 /* {{{ proto array Imagick::identifyImage([bool appendRawOutput] )
@@ -8583,8 +8687,11 @@ PHP_METHOD(imagick, setimagedelay)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::colorizeImage(ImagickPixel colorize, ImagickPixel opacity)
-	Blends the fill color with each pixel in the image.
+/* {{{ proto bool Imagick::colorizeImage(ImagickPixel colorize, ImagickPixel opacity, bool legacy)
+	Blends the fill color with each pixel in the image. The 'opacity' color is a 
+	per channel strength factor for how strongly the color should be applied. If
+	legacy is true, the behaviour of this function is incorrect, but consistent 
+	with how it behaved before Imagick version 3.4.0
 */
 PHP_METHOD(imagick, colorizeimage)
 {
@@ -8594,9 +8701,10 @@ PHP_METHOD(imagick, colorizeimage)
 	MagickBooleanType status;
 	PixelWand *color_wand, *opacity_wand;
 	zend_bool color_allocated, opacity_allocated;
+	zend_bool legacy = 0;
 
 	/* Parse parameters given to function */
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zz", &color_param, &opacity_param) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zz|b", &color_param, &opacity_param, &legacy) == FAILURE) {
 		return;
 	}
 
@@ -8608,7 +8716,13 @@ PHP_METHOD(imagick, colorizeimage)
 	if (!color_wand)
 		return;
 
-	opacity_wand = php_imagick_zval_to_opacity (opacity_param, IMAGICK_CLASS, &opacity_allocated TSRMLS_CC);
+	if (legacy) {
+		opacity_wand = php_imagick_zval_to_opacity (opacity_param, IMAGICK_CLASS, &opacity_allocated TSRMLS_CC);
+	}
+	else {
+		opacity_wand = php_imagick_zval_to_pixelwand(opacity_param, IMAGICK_CLASS, &opacity_allocated TSRMLS_CC);
+	}
+
 	if (!opacity_wand) {
 		if (color_allocated)
 			color_wand = DestroyPixelWand (color_wand);
@@ -8616,20 +8730,22 @@ PHP_METHOD(imagick, colorizeimage)
 		return;
 	}
 
-	/* Colorize wants both wands to be of same instance */
-	param_wand = php_imagick_clone_pixelwand (color_wand);
-	if (!param_wand) {
-		php_imagick_throw_exception (IMAGICK_CLASS, "Failed to allocate" TSRMLS_CC);
-		return;
-	}
-
+	if (legacy) {
+		/* Colorize wants both wands to be of same instance */
+		param_wand = php_imagick_clone_pixelwand (color_wand);
+		if (!param_wand) {
+			php_imagick_throw_exception (IMAGICK_CLASS, "Failed to allocate" TSRMLS_CC);
+			return;
+		}
 #if MagickLibVersion < 0x700
-	PixelSetOpacity(param_wand, PixelGetOpacity(opacity_wand));
+		PixelSetOpacity(param_wand, PixelGetOpacity(opacity_wand));
 #endif
-	PixelSetAlpha(param_wand, PixelGetAlpha(opacity_wand));
-
-	status = MagickColorizeImage(intern->magick_wand, param_wand, param_wand);
-	param_wand = DestroyPixelWand(param_wand);
+		PixelSetAlpha(param_wand, PixelGetAlpha(opacity_wand));
+		status = MagickColorizeImage(intern->magick_wand, param_wand, param_wand);
+		param_wand = DestroyPixelWand(param_wand);
+	} else {
+		status = MagickColorizeImage(intern->magick_wand, color_wand, opacity_wand);
+	}
 
 	if (color_allocated)
 		color_wand = DestroyPixelWand (color_wand);
@@ -10695,8 +10811,11 @@ PHP_METHOD(imagick, resampleimage)
 }
 /* }}} */
 
-/* {{{ proto bool Imagick::resizeImage(int width, int height, int filter, float blur[, bool bestfit = false])
+/* {{{ proto bool Imagick::resizeImage(int width, int height, int filter, float blur[, bool bestfit = false[, bool legacy]])
 	Scales an image to the desired dimensions with one of these filters:
+	If legacy is true, the calculations are done with the small rounding bug that existed in
+	Imagick before 3.4.0. If false, the calculations should produce the same results as 
+	ImageMagick CLI does.
 */
 PHP_METHOD(imagick, resizeimage)
 {
@@ -10705,8 +10824,9 @@ PHP_METHOD(imagick, resizeimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	zend_bool bestfit = 0;
+	zend_bool legacy = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llld|b", &width, &height, &filter, &blur, &bestfit) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llld|bb", &width, &height, &filter, &blur, &bestfit, &legacy) == FAILURE) {
 		return;
 	}
 
@@ -10714,7 +10834,7 @@ PHP_METHOD(imagick, resizeimage)
 	if (php_imagick_ensure_not_empty (intern->magick_wand) == 0)
 		return;
 
-	if (!php_imagick_thumbnail_dimensions(intern->magick_wand, bestfit, width, height, &new_width, &new_height)) {
+	if (!php_imagick_thumbnail_dimensions(intern->magick_wand, bestfit, width, height, &new_width, &new_height, legacy)) {
 		php_imagick_throw_exception(IMAGICK_CLASS, "Invalid image geometry" TSRMLS_CC);
 		return;
 	}
@@ -11804,7 +11924,7 @@ PHP_METHOD(imagick, settype)
 }
 /* }}} */
 
-
+#if MagickLibVersion >= 0x659
 /* {{{ proto bool Imagick::brightnessContrastImage(float brigthness, float contrast[, int channel])
 	Change the brightness and/or contrast of an image. It converts the brightness and contrast parameters into slope and intercept and calls a polynomical function to apply to the image.
 */
@@ -11835,6 +11955,7 @@ PHP_METHOD(imagick, brightnesscontrastimage)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
 
 
 #if MagickLibVersion > 0x661
@@ -12086,7 +12207,7 @@ PHP_METHOD(imagick, subimagematch)
 		return;
 
 #if MagickLibVersion >= 0x700
-	MetricType metric = AbsoluteErrorMetric;
+	MetricType metric = RootMeanSquaredErrorMetric;
 	double similarity_threshold = 1.0;
 	new_wand = MagickSimilarityImage(intern->magick_wand, reference_intern->magick_wand,
 	metric, similarity_threshold,

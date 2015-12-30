@@ -134,6 +134,7 @@ PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry()
 		ZEND_ARG_INFO(0, columns)
 		ZEND_ARG_INFO(0, rows)
 		ZEND_ARG_INFO(0, bestfit)
+		ZEND_ARG_INFO(0, legacy)
 	ZEND_END_ARG_INFO()
 
 	ZEND_BEGIN_ARG_INFO_EX(imagick_contraststretchimage_args, 0, 0, 2)
@@ -536,6 +537,7 @@ PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry()
 		ZEND_ARG_INFO(0, width)
 		ZEND_ARG_INFO(0, height)
 		ZEND_ARG_INFO(0, bestfit)
+		ZEND_ARG_INFO(0, legacy)
 	ZEND_END_ARG_INFO()
 
 	ZEND_BEGIN_ARG_INFO_EX(imagick_writeimage_args, 0, 0, 0)
@@ -558,11 +560,13 @@ PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry()
 		ZEND_ARG_INFO(0, height)
 		ZEND_ARG_INFO(0, bestfit)
 		ZEND_ARG_INFO(0, fill)
+		ZEND_ARG_INFO(0, legacy)
 	ZEND_END_ARG_INFO()
 
 	ZEND_BEGIN_ARG_INFO_EX(imagick_cropthumbnailimage_args, 0, 0, 2)
 		ZEND_ARG_INFO(0, width)
 		ZEND_ARG_INFO(0, height)
+		ZEND_ARG_INFO(0, legacy)
 	ZEND_END_ARG_INFO()
 
 	ZEND_BEGIN_ARG_INFO_EX(imagick_setimagefilename_args, 0, 0, 1)
@@ -713,6 +717,7 @@ PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry()
 		ZEND_ARG_INFO(0, filter)
 		ZEND_ARG_INFO(0, blur)
 		ZEND_ARG_INFO(0, bestfit)
+		ZEND_ARG_INFO(0, legacy)
 	ZEND_END_ARG_INFO()
 
 	ZEND_BEGIN_ARG_INFO_EX(imagick_rollimage_args, 0, 0, 2)
@@ -913,6 +918,14 @@ PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry()
 		ZEND_ARG_OBJ_INFO(0, ImagickDraw, ImagickDraw, 0)
 	ZEND_END_ARG_INFO()
 
+	ZEND_BEGIN_ARG_INFO_EX(imagick_calculatecrop_args, 0, 0, 4)
+		ZEND_ARG_INFO(0, orig_width)
+		ZEND_ARG_INFO(0, orig_height)
+		ZEND_ARG_INFO(0, desired_width)
+		ZEND_ARG_INFO(0, desired_height)
+		ZEND_ARG_INFO(0, legacy)
+	ZEND_END_ARG_INFO()
+
 	ZEND_BEGIN_ARG_INFO_EX(imagick_borderimage_args, 0, 0, 3)
 		ZEND_ARG_INFO(0, color)
 		ZEND_ARG_INFO(0, width)
@@ -944,6 +957,7 @@ PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry()
 	ZEND_BEGIN_ARG_INFO_EX(imagick_colorizeimage_args, 0, 0, 2)
 		ZEND_ARG_INFO(0, colorize_color)
 		ZEND_ARG_INFO(0, opacity)
+		ZEND_ARG_INFO(0, legacy)
 	ZEND_END_ARG_INFO()
 
 	ZEND_BEGIN_ARG_INFO_EX(imagick_compareimagechannels_args, 0, 0, 3)
@@ -1252,6 +1266,7 @@ PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry()
 	ZEND_BEGIN_ARG_INFO_EX(imagick_tintimage_args, 0, 0, 2)
 		ZEND_ARG_INFO(0, tint_color)
 		ZEND_ARG_INFO(0, opacity)
+		ZEND_ARG_INFO(0, legacy)
 	ZEND_END_ARG_INFO()
 
 	ZEND_BEGIN_ARG_INFO_EX(imagick_unsharpmaskimage_args, 0, 0, 4)
@@ -1358,11 +1373,13 @@ PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry()
 		ZEND_ARG_INFO(0, IMGTYPE)
 	ZEND_END_ARG_INFO()
 
+#if MagickLibVersion >= 0x659
 	ZEND_BEGIN_ARG_INFO_EX(imagick_brightnesscontrastimage_args, 0, 0, 2)
 		ZEND_ARG_INFO(0, brightness)
 		ZEND_ARG_INFO(0, contrast)
 		ZEND_ARG_INFO(0, CHANNEL)
 	ZEND_END_ARG_INFO()
+#endif
 
 #if MagickLibVersion > 0x661
 	ZEND_BEGIN_ARG_INFO_EX(imagick_colormatriximage_args, 0, 0, 1)
@@ -2421,6 +2438,7 @@ static zend_function_entry php_imagick_class_methods[] =
 #endif
 #endif
 	PHP_ME(imagick, borderimage, imagick_borderimage_args, ZEND_ACC_PUBLIC)
+	PHP_ME(imagick, calculatecrop, imagick_calculatecrop_args, ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
 	PHP_ME(imagick, chopimage, imagick_chopimage_args, ZEND_ACC_PUBLIC)
 	PHP_ME(imagick, clipimage, imagick_zero_args, ZEND_ACC_PUBLIC)
 	PHP_ME(imagick, clippathimage, imagick_clippathimage_args, ZEND_ACC_PUBLIC)
@@ -2617,7 +2635,9 @@ static zend_function_entry php_imagick_class_methods[] =
 	PHP_MALIAS(imagick, rewind, setfirstiterator, imagick_zero_args, ZEND_ACC_PUBLIC)
 	PHP_ME(imagick, valid, imagick_zero_args, ZEND_ACC_PUBLIC)
 	PHP_ME(imagick, current, imagick_zero_args, ZEND_ACC_PUBLIC)
+#if MagickLibVersion >= 0x659
 	PHP_ME(imagick, brightnesscontrastimage, imagick_brightnesscontrastimage_args, ZEND_ACC_PUBLIC)
+#endif
 #if MagickLibVersion > 0x661
 	PHP_ME(imagick, colormatriximage, imagick_colormatriximage_args, ZEND_ACC_PUBLIC)
 #endif
@@ -2630,6 +2650,7 @@ static zend_function_entry php_imagick_class_methods[] =
 #endif
 #if MagickLibVersion >= 0x652
 	PHP_ME(imagick, subimagematch, imagick_subimagematch_args, ZEND_ACC_PUBLIC)
+	ZEND_MALIAS(imagick, similarityimage, subimagematch, imagick_subimagematch_args, ZEND_ACC_PUBLIC)
 #endif
 	PHP_ME(imagick, setregistry, imagick_setregistry_args, ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
 	PHP_ME(imagick, getregistry, imagick_getregistry_args, ZEND_ACC_STATIC|ZEND_ACC_PUBLIC)
