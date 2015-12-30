@@ -4,7 +4,7 @@
  <channel>pecl.php.net</channel>
  <summary>Provides a wrapper to the ImageMagick library.</summary>
  <description>Imagick is a native php extension to create and modify images using the ImageMagick API.
-This extension requires ImageMagick version 6.5.4+ and PHP 5.4.0+.</description>
+This extension requires ImageMagick version 6.5.3-10+ and PHP 5.4.0+.</description>
  <lead>
   <name>Mikko Koppanen</name>
   <user>mkoppanen</user>
@@ -23,10 +23,10 @@ This extension requires ImageMagick version 6.5.4+ and PHP 5.4.0+.</description>
   <email>scottmac@php.net</email>
   <active>no</active>
  </lead>
- <date>2015-12-04</date>
- <time>18:30:42</time>
+ <date>2015-12-22</date>
+ <time>13:59:22</time>
  <version>
-  <release>3.4.0RC2</release>
+  <release>3.4.0RC4</release>
   <api>3.4.0</api>
  </version>
  <stability>
@@ -35,30 +35,8 @@ This extension requires ImageMagick version 6.5.4+ and PHP 5.4.0+.</description>
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Added support:
-  * PHP 7
-  * ImageMagick 7. Imagick can be compiled against either ImageMagick 6 or ImageMagick 7
-    However it must be run with the exact same version it was compiled against. Trying
-    to run Imagick with a different version of ImageMagick than it was compiled against 
-    is not supported. Please see http://nextgen.imagemagick.org/script/porting.php for
-    more information about ImageMagick 7.
-- Minimum versions supported are now PHP &gt;= 5.4.0 and ImageMagick &gt;= 6.5.3-10.
-    Earlier versions may continue to work, but they are no longer supported.
-- Added methods:
-  * Imagick::getConfigureOptions
-  * Imagick::getFeatures
-  * Imagick::getHDRIEnabled
-  * Imagick::setImageChannelMask (IM7 only)
-- Added IM7 constants:
-  * Imagick::CHANNEL_READ_MASK
-  * Imagick::CHANNEL_WRITE_MASK
-  * Imagick::CHANNEL_META
 - Fixes:
-  * ImagickPixel::getColorQuantum, ImagickPixel::getColorValueQuantum and 
-    ImagickPixel::setColorValueQuantum now correctly use floats when Imagick 
-    was compiled against a HDRI version of ImageMagick
-  * Imagick::exportImagePixels works for all storage types
-  * Version number in extension header
+  * Remove duplicated definitions of class constants.
  </notes>
  <contents>
   <dir name="/">
@@ -67,8 +45,8 @@ This extension requires ImageMagick version 6.5.4+ and PHP 5.4.0+.</description>
    <file md5sum="2d1d268de0ea3717948b75b471e6fdaa" name="examples/thumbnail.php" role="doc" />
    <file md5sum="2f4f60310fc9422b478eb1cb35958156" name="examples/watermark.php" role="doc" />
    <file md5sum="0c729978bd2328e59981246eb46f6e5a" name="tests/001_imagick_readimage.phpt" role="test" />
-   <file md5sum="9d2518d051a745aa38d040c3bdc85a0f" name="tests/002_thumbnail.phpt" role="test" />
-   <file md5sum="1c32b8c070b31203f014c50a42371557" name="tests/003_cast_color_opacity.phpt" role="test" />
+   <file md5sum="f5cf174bb1b8bf8e554752978a839f81" name="tests/002_thumbnail.phpt" role="test" />
+   <file md5sum="6c04266a5f9bfa1e44a425a775b1a83a" name="tests/003_cast_color_opacity.phpt" role="test" />
    <file md5sum="52a79eeabdd255f9fe98156a8c7cfd14" name="tests/004_clone.phpt" role="test" />
    <file md5sum="c8a884fe3807d4b979f2665d920d9979" name="tests/005_bestfit.phpt" role="test" />
    <file md5sum="a96be08ac6c0f931745d647ffbfb023e" name="tests/006_cropthumbnail.phpt" role="test" />
@@ -178,7 +156,7 @@ This extension requires ImageMagick version 6.5.4+ and PHP 5.4.0+.</description>
    <file md5sum="9d86beceaf5fa5cacf48c1a997fdd737" name="tests/111_Imagick_rotateImage_basic.phpt" role="test" />
    <file md5sum="e0170a30c3b3f8602c22a34cd8d425db" name="tests/112_Imagick_roundCorners_basic.phpt" role="test" />
    <file md5sum="c7f8b1dcd94b86b9480eb3ec5d0806e7" name="tests/113_Imagick_rotationalBlurImage_basic.phpt" role="test" />
-   <file md5sum="733d72eed6abc69879226bf131566fbb" name="tests/114_Imagick_scaleImage_basic.phpt" role="test" />
+   <file md5sum="a15f5f78c89fcc8f708443dd9e919880" name="tests/114_Imagick_scaleImage_basic.phpt" role="test" />
    <file md5sum="51a3c721f719997912ca343db7e852c0" name="tests/115_Imagick_selectiveBlurImage_basic.phpt" role="test" />
    <file md5sum="980caad614b1ab76c825fddd686cb7a9" name="tests/116_Imagick_separateImageChannel_basic.phpt" role="test" />
    <file md5sum="abb7244b373444bef592d7c920ea26ad" name="tests/117_Imagick_segmentImage_basic.phpt" role="test" />
@@ -208,7 +186,7 @@ This extension requires ImageMagick version 6.5.4+ and PHP 5.4.0+.</description>
    <file md5sum="b5334176264be1382cc86badff178846" name="tests/145_imagickkernel_coverage.phpt" role="test" />
    <file md5sum="4f76d53aa43b408be7dcf58e74129d3f" name="tests/149_Imagick_sparseColorImage.phpt" role="test" />
    <file md5sum="0cd93a965e2a2b8c12e34f90d594d7fc" name="tests/150_Imagick_setregistry.phpt" role="test" />
-   <file md5sum="ed82d09eaf284cd8e763e2c94a880be9" name="tests/151_Imagick_subImageMatch_basic.phpt" role="test" />
+   <file md5sum="9de90b03d515706ad8435fd2bc0e95c1" name="tests/151_Imagick_subImageMatch_basic.phpt" role="test" />
    <file md5sum="b7d81ddfda55f5a29d895c964269a6ca" name="tests/152_Imagick_swirlImage_basic.phpt" role="test" />
    <file md5sum="928218be2ed549326128d0eac19c080d" name="tests/153_Imagick_statisticImage_basic.phpt" role="test" />
    <file md5sum="4422c3a23f78884cc521bd0aa4b94d0c" name="tests/154_Imagick_textureImage_basic.phpt" role="test" />
@@ -318,25 +296,25 @@ This extension requires ImageMagick version 6.5.4+ and PHP 5.4.0+.</description>
    <file md5sum="29d73c7d4993122ca81e6127e5edb133" name="imagemagick.m4" role="src" />
    <file md5sum="432af3c0083b18708c1516d4db08863b" name="config.w32" role="src" />
    <file md5sum="6077035e65e0b0bbe5a28917282e26b2" name="CREDITS" role="doc" />
-   <file md5sum="43d323e39144fcb41c74f65000323c57" name="imagick.c" role="src" />
-   <file md5sum="baf0d9701f3f453583fcd3cdfea5c335" name="imagick_class.c" role="src" />
+   <file md5sum="c0c8bd0d72d7af2a66623ee691df7f33" name="imagick.c" role="src" />
+   <file md5sum="c4a2b205771b15120fe4bf7dcac72360" name="imagick_class.c" role="src" />
    <file md5sum="e468d6355ebc2e44dbf1cc5332e27f7c" name="imagickdraw_class.c" role="src" />
    <file md5sum="c4b7229a566730cbd2d090c68a67e0cb" name="imagickpixel_class.c" role="src" />
    <file md5sum="1f3706e73d4eed8486212df31759ecdd" name="imagickpixeliterator_class.c" role="src" />
    <file md5sum="55939a7facc28c4617695d360d1d03b4" name="imagickkernel_class.c" role="src" />
-   <file md5sum="102de674881198e58bedcd1782c382a6" name="imagick_helpers.c" role="src" />
+   <file md5sum="ca3dc1ede6df6fd7d1c21ae0396da253" name="imagick_helpers.c" role="src" />
    <file md5sum="66bc408b3e6cc745ef877eb4909d38aa" name="imagick_file.c" role="src" />
-   <file md5sum="4398ebc5832e6c771dcf709ce8736565" name="php_imagick.h" role="src">
+   <file md5sum="bef568ccac1a46ef5f68785c475a84b3" name="php_imagick.h" role="src">
     <tasks:replace from="@PACKAGE_VERSION@" to="version" type="package-info" />
    </file>
-   <file md5sum="573af8ac2353d7f920c54c01e2805681" name="php_imagick_defs.h" role="src" />
-   <file md5sum="be93416087219f8f52a508638f02a836" name="php_imagick_helpers.h" role="src" />
+   <file md5sum="82cbdb50462097bfbe3fef290fd86df9" name="php_imagick_defs.h" role="src" />
+   <file md5sum="ffdd8a20d5996d950a5f6002664af490" name="php_imagick_helpers.h" role="src" />
    <file md5sum="1cda4ab0d10299d239db2c0e198b4084" name="php_imagick_macros.h" role="src" />
    <file md5sum="9b4b96d6a870d2962576dd72ec953989" name="php_imagick_shared.h" role="src" />
    <file md5sum="b407a134c7b9a5e3737e26a1f211347d" name="php_imagick_file.h" role="src" />
    <file md5sum="28792d4b9e3124aaa6c11a941cd5a959" name="shim_im6_to_im7.c" role="src" />
    <file md5sum="361f3367c0a43e7bf9e27d3ffe292771" name="shim_im6_to_im7.h" role="src" />
-   <file md5sum="a7ce2818709dd0f2f851079c0dd260d4" name="ChangeLog" role="doc" />
+   <file md5sum="ffb9f87c0eca54b10aa824cbb755ce3b" name="ChangeLog" role="doc" />
    <file md5sum="dd34a70236f008af999de817b93a5e3a" name="LICENSE" role="doc" />
   </dir>
  </contents>
