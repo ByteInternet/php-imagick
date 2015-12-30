@@ -1,3 +1,12 @@
+php-imagick (3.4.0~rc4-1) unstable; urgency=medium
+
+  * Add libmagickwand-dev as alternative build-dependency
+  * Add static description
+  * Imported Upstream version 3.4.0~rc4 (Closes: #809445)
+  * Update patch with 3.4.0~rc4 path
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 30 Dec 2015 20:23:09 +0100
+
 php-imagick (3.4.0~rc2-1) unstable; urgency=medium
 
   * Imported Upstream version 3.4.0~rc2
