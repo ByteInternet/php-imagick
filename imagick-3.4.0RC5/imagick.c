@@ -1415,6 +1415,8 @@ PHP_IMAGICK_API zend_class_entry *php_imagickpixel_get_class_entry()
 		ZEND_ARG_OBJ_INFO(0, Imagick, Imagick, 0)
 		ZEND_ARG_INFO(1, offset)
 		ZEND_ARG_INFO(1, similarity)
+		ZEND_ARG_INFO(1, similarity_threshold) // the minimum similarity to match?
+		ZEND_ARG_INFO(1, metric) //Which comparison to use METRIC_*
 	ZEND_END_ARG_INFO()
 #endif
 
@@ -3093,11 +3095,8 @@ static void php_imagick_init_globals(zend_imagick_globals *imagick_globals)
 	imagick_globals->skip_version_check = 0;
 }
 
-#ifdef ZEND_ENGINE_3
-static int php_imagick_count_elements(zval *object, zend_long *count TSRMLS_DC) /* {{{ */
-#else
-static int php_imagick_count_elements(zval *object, long *count TSRMLS_DC) /* {{{ */
-#endif
+
+static int php_imagick_count_elements(zval *object, im_long *count TSRMLS_DC) /* {{{ */
 {
 	php_imagick_object *intern= Z_IMAGICK_P(object);
 

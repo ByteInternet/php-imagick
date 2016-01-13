@@ -23,10 +23,10 @@ This extension requires ImageMagick version 6.5.3-10+ and PHP 5.4.0+.</descripti
   <email>scottmac@php.net</email>
   <active>no</active>
  </lead>
- <date>2015-12-22</date>
- <time>13:59:22</time>
+ <date>2016-01-11</date>
+ <time>23:22:11</time>
  <version>
-  <release>3.4.0RC4</release>
+  <release>3.4.0RC5</release>
   <api>3.4.0</api>
  </version>
  <stability>
@@ -35,8 +35,13 @@ This extension requires ImageMagick version 6.5.3-10+ and PHP 5.4.0+.</descripti
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
+- Added:
+  * Imagick::subImageMatch() added parameters. The signature is now: 
+    Imagick::subimagematch(Imagick subimage[, array &amp;$bestMatch[, float &amp;similarity[, 
+      float $similarity_threshold = 0[, int $metric = ]]]])
+    These parameters are only used when compiled against ImageMagick 7.
 - Fixes:
-  * Remove duplicated definitions of class constants.
+  * wrong type for zend_parse_parameters.
  </notes>
  <contents>
   <dir name="/">
@@ -152,7 +157,7 @@ This extension requires ImageMagick version 6.5.3-10+ and PHP 5.4.0+.</descripti
    <file md5sum="cd3637df081c1042af7b744e42d82024" name="tests/107_Imagick_recolorImage_basic.phpt" role="test" />
    <file md5sum="c71aedf5042bd1bc8b0988d21b09ddda" name="tests/108_Imagick_resampleImage_basic.phpt" role="test" />
    <file md5sum="b57de12bb2a75005c3014f28303b50fd" name="tests/109_Imagick_rollImage_basic.phpt" role="test" />
-   <file md5sum="b1e5e5533040a14aac906384a172c22e" name="tests/110_Imagick_resizeImage_basic.phpt" role="test" />
+   <file md5sum="dfc98fb42d0bf4e145ef0cafe78f363d" name="tests/110_Imagick_resizeImage_basic.phpt" role="test" />
    <file md5sum="9d86beceaf5fa5cacf48c1a997fdd737" name="tests/111_Imagick_rotateImage_basic.phpt" role="test" />
    <file md5sum="e0170a30c3b3f8602c22a34cd8d425db" name="tests/112_Imagick_roundCorners_basic.phpt" role="test" />
    <file md5sum="c7f8b1dcd94b86b9480eb3ec5d0806e7" name="tests/113_Imagick_rotationalBlurImage_basic.phpt" role="test" />
@@ -186,7 +191,7 @@ This extension requires ImageMagick version 6.5.3-10+ and PHP 5.4.0+.</descripti
    <file md5sum="b5334176264be1382cc86badff178846" name="tests/145_imagickkernel_coverage.phpt" role="test" />
    <file md5sum="4f76d53aa43b408be7dcf58e74129d3f" name="tests/149_Imagick_sparseColorImage.phpt" role="test" />
    <file md5sum="0cd93a965e2a2b8c12e34f90d594d7fc" name="tests/150_Imagick_setregistry.phpt" role="test" />
-   <file md5sum="9de90b03d515706ad8435fd2bc0e95c1" name="tests/151_Imagick_subImageMatch_basic.phpt" role="test" />
+   <file md5sum="85c5edb40dfe7d81457eb82eb623a276" name="tests/151_Imagick_subImageMatch_basic.phpt" role="test" />
    <file md5sum="b7d81ddfda55f5a29d895c964269a6ca" name="tests/152_Imagick_swirlImage_basic.phpt" role="test" />
    <file md5sum="928218be2ed549326128d0eac19c080d" name="tests/153_Imagick_statisticImage_basic.phpt" role="test" />
    <file md5sum="4422c3a23f78884cc521bd0aa4b94d0c" name="tests/154_Imagick_textureImage_basic.phpt" role="test" />
@@ -296,25 +301,25 @@ This extension requires ImageMagick version 6.5.3-10+ and PHP 5.4.0+.</descripti
    <file md5sum="29d73c7d4993122ca81e6127e5edb133" name="imagemagick.m4" role="src" />
    <file md5sum="432af3c0083b18708c1516d4db08863b" name="config.w32" role="src" />
    <file md5sum="6077035e65e0b0bbe5a28917282e26b2" name="CREDITS" role="doc" />
-   <file md5sum="c0c8bd0d72d7af2a66623ee691df7f33" name="imagick.c" role="src" />
-   <file md5sum="c4a2b205771b15120fe4bf7dcac72360" name="imagick_class.c" role="src" />
-   <file md5sum="e468d6355ebc2e44dbf1cc5332e27f7c" name="imagickdraw_class.c" role="src" />
-   <file md5sum="c4b7229a566730cbd2d090c68a67e0cb" name="imagickpixel_class.c" role="src" />
+   <file md5sum="ecbbfc1de01cd2df8ea604e68c2695ba" name="imagick.c" role="src" />
+   <file md5sum="16d4b78abe9837ea47b6414d0bdccbf0" name="imagick_class.c" role="src" />
+   <file md5sum="5dda404837e5e2ae4ee33c050ee53910" name="imagickdraw_class.c" role="src" />
+   <file md5sum="bd58c7fa34b39b717622948d75d98d20" name="imagickpixel_class.c" role="src" />
    <file md5sum="1f3706e73d4eed8486212df31759ecdd" name="imagickpixeliterator_class.c" role="src" />
-   <file md5sum="55939a7facc28c4617695d360d1d03b4" name="imagickkernel_class.c" role="src" />
-   <file md5sum="ca3dc1ede6df6fd7d1c21ae0396da253" name="imagick_helpers.c" role="src" />
+   <file md5sum="4c385e40b3f2947883e71bb10a5dc5e9" name="imagickkernel_class.c" role="src" />
+   <file md5sum="1ecb01cdaea782ecb2403a30865ece00" name="imagick_helpers.c" role="src" />
    <file md5sum="66bc408b3e6cc745ef877eb4909d38aa" name="imagick_file.c" role="src" />
-   <file md5sum="bef568ccac1a46ef5f68785c475a84b3" name="php_imagick.h" role="src">
+   <file md5sum="e5f6137bd5ff197a0acaf8576f26a4f5" name="php_imagick.h" role="src">
     <tasks:replace from="@PACKAGE_VERSION@" to="version" type="package-info" />
    </file>
-   <file md5sum="82cbdb50462097bfbe3fef290fd86df9" name="php_imagick_defs.h" role="src" />
-   <file md5sum="ffdd8a20d5996d950a5f6002664af490" name="php_imagick_helpers.h" role="src" />
+   <file md5sum="8bb9058eae02996816c490744780fbf6" name="php_imagick_defs.h" role="src" />
+   <file md5sum="043acb065f6104a908223b18a7a289b1" name="php_imagick_helpers.h" role="src" />
    <file md5sum="1cda4ab0d10299d239db2c0e198b4084" name="php_imagick_macros.h" role="src" />
    <file md5sum="9b4b96d6a870d2962576dd72ec953989" name="php_imagick_shared.h" role="src" />
    <file md5sum="b407a134c7b9a5e3737e26a1f211347d" name="php_imagick_file.h" role="src" />
    <file md5sum="28792d4b9e3124aaa6c11a941cd5a959" name="shim_im6_to_im7.c" role="src" />
    <file md5sum="361f3367c0a43e7bf9e27d3ffe292771" name="shim_im6_to_im7.h" role="src" />
-   <file md5sum="ffb9f87c0eca54b10aa824cbb755ce3b" name="ChangeLog" role="doc" />
+   <file md5sum="9ca03cdd9bc712480b052c3de7708696" name="ChangeLog" role="doc" />
    <file md5sum="dd34a70236f008af999de817b93a5e3a" name="LICENSE" role="doc" />
   </dir>
  </contents>
