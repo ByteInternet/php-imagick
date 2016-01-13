@@ -106,7 +106,7 @@ PHP_METHOD(imagick, pingimageblob)
 PHP_METHOD(imagick, vignetteimage)
 {
 	double black_point, white_point;
-	long x, y;
+	im_long x, y;
 	php_imagick_object *intern;
 	MagickBooleanType status;
 
@@ -195,7 +195,7 @@ PHP_METHOD(imagick, adaptiveblurimage)
 	double radius, sigma;
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|l", &radius, &sigma, &channel) == FAILURE) {
@@ -253,7 +253,7 @@ PHP_METHOD(imagick, contraststretchimage)
 	php_imagick_object *intern;
 	double black_point, white_point;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|l", &black_point, &white_point, &channel) == FAILURE) {
@@ -348,7 +348,7 @@ PHP_METHOD(imagick, adaptiveresizeimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long width, height, new_width, new_height;
+	im_long width, height, new_width, new_height;
 	zend_bool bestfit = 0;
 	zend_bool legacy = 0;
 
@@ -466,7 +466,7 @@ PHP_METHOD(imagick, getsizeoffset)
 PHP_METHOD(imagick, setsizeoffset)
 {
 	php_imagick_object *intern;
-	long columns, rows, offset;
+	im_long columns, rows, offset;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -494,7 +494,7 @@ PHP_METHOD(imagick, adaptivesharpenimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	double radius, sigma;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|l", &radius, &sigma, &channel) == FAILURE) {
 		return;
@@ -524,7 +524,7 @@ PHP_METHOD(imagick, randomthresholdimage)
 	php_imagick_object *intern;
 	double low, high;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|l", &low, &high, &channel) == FAILURE) {
 		return;
@@ -708,7 +708,7 @@ PHP_METHOD(imagick, getiteratorindex)
 */
 PHP_METHOD(imagick, setiteratorindex)
 {
-	const long index;
+	const im_long index;
 	MagickBooleanType status;
 	php_imagick_object *intern;
 
@@ -808,7 +808,7 @@ PHP_METHOD(imagick, orderedposterizeimage)
 	IM_LEN_TYPE map_len;
 	MagickBooleanType status;
 	php_imagick_object *intern;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &map, &map_len, &channel) == FAILURE) {
 		return;
@@ -1044,7 +1044,7 @@ PHP_METHOD(imagick, getimageinterpolatemethod)
 PHP_METHOD(imagick, setimageinterpolatemethod)
 {
 	php_imagick_object *intern;
-	long interpolate;
+	im_long interpolate;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -1131,7 +1131,7 @@ PHP_METHOD(imagick, extentimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long width, height, x, y;
+	im_long width, height, x, y;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llll", &width, &height, &x, &y) == FAILURE)
@@ -1181,7 +1181,7 @@ PHP_METHOD(imagick, getimageorientation)
 PHP_METHOD(imagick, setimageorientation)
 {
 	php_imagick_object *intern;
-	long orientation;
+	im_long orientation;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -1215,7 +1215,7 @@ PHP_METHOD(imagick, paintfloodfillimage)
 {
 	php_imagick_object *intern;
 	zval *fill_param, *border_param;
-	long x, y, channel = DefaultChannels;
+	im_long x, y, channel = DefaultChannels;
 	double fuzz;
 	MagickBooleanType status;
 	PixelWand *fill_wand, *border_wand = NULL;
@@ -1274,7 +1274,7 @@ PHP_METHOD(imagick, clutimage)
 	zval *objvar;
 	php_imagick_object *intern, *lookup;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|l", &objvar, php_imagick_sc_entry, &channel) == FAILURE) {
@@ -1415,7 +1415,7 @@ PHP_METHOD(imagick, distortimage)
 {
 	php_imagick_object *intern;
 	double *arguments;
-	long distort_method, elements;
+	im_long distort_method, elements;
 	zend_bool bestfit;
 	zval *arg_array;
 	MagickBooleanType status;
@@ -1493,6 +1493,7 @@ PHP_METHOD(imagick, writeimagefile)
 	}
 
 	if (result == 0) {
+		/* php_stream_cast returns warning on some streams but still does not return FAILURE */
 		if (!EG(exception)) {
 			php_imagick_convert_imagick_exception(intern->magick_wand, "Unable to write image to the filehandle" TSRMLS_CC);
 			return;
@@ -1695,7 +1696,7 @@ PHP_METHOD(imagick, recolorimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long num_elements;
+	im_long num_elements;
 	zval *matrix;
 	double *array;
 	unsigned long order;
@@ -1848,7 +1849,7 @@ PHP_METHOD(imagick, getpointsize)
 PHP_METHOD(imagick, mergeimagelayers)
 {
 	php_imagick_object *intern, *intern_return;
-	long layer_method;
+	im_long layer_method;
 	MagickWand *merged;
 
 	/* Parse parameters given to function */
@@ -1889,7 +1890,7 @@ PHP_METHOD(imagick, floodfillpaintimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	zval *fill_param, *border_param;
-	long x, y, channel = IM_DEFAULT_CHANNEL;
+	im_long x, y, channel = IM_DEFAULT_CHANNEL;
 	zend_bool invert;
 	double fuzz;
 	PixelWand *fill_wand, *border_wand;
@@ -1947,7 +1948,7 @@ PHP_METHOD(imagick, opaquepaintimage)
 	zval *fill_param, *target_param;
 	zend_bool invert;
 	double fuzz;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 	PixelWand *fill_wand, *target_wand;
 	zend_bool fill_allocated = 0, target_allocated = 0;
 
@@ -2032,7 +2033,7 @@ PHP_METHOD(imagick, transparentpaintimage)
 PHP_METHOD(imagick, setimagealphachannel)
 {
 	php_imagick_object *intern;
-	long alpha_channel;
+	im_long alpha_channel;
 	MagickBooleanType status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &alpha_channel) == FAILURE) {
@@ -2060,7 +2061,7 @@ PHP_METHOD(imagick, setimagealphachannel)
 PHP_METHOD(imagick, liquidrescaleimage)
 {
 	php_imagick_object *intern;
-	long cols, rows;
+	im_long cols, rows;
 	double delta_x, rigidity;
 	MagickBooleanType status;
 
@@ -2147,7 +2148,7 @@ PHP_METHOD(imagick, encipherimage)
 PHP_METHOD(imagick, setgravity)
 {
 	php_imagick_object *intern;
-	long gravity;
+	im_long gravity;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &gravity) == FAILURE) {
 		return;
@@ -2187,7 +2188,7 @@ PHP_METHOD(imagick, getgravity)
 PHP_METHOD(imagick, getimagechannelrange)
 {
 	php_imagick_object *intern;
-	long channel;
+	im_long channel;
 	double maxima, minima;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &channel) == FAILURE) {
@@ -2240,7 +2241,7 @@ PHP_METHOD(imagick, getimagechanneldistortions)
 	php_imagick_object *intern_reference;
 	zval *reference_param;
 	double distortion;
-	long metric, channel = DefaultChannels;
+	im_long metric, channel = DefaultChannels;
 	MagickBooleanType status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Ol|l", &reference_param, php_imagick_sc_entry, &metric, &channel) == FAILURE) {
@@ -2294,7 +2295,7 @@ PHP_METHOD(imagick, setimagegravity)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long gravity;
+	im_long gravity;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &gravity) == FAILURE) {
 		return;
@@ -2329,8 +2330,8 @@ PHP_METHOD(imagick, importimagepixels)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 
-	long storage, num_elements;
-	long x, y, width, height;
+	im_long storage, num_elements;
+	im_long x, y, width, height;
 	IM_LEN_TYPE map_len;
 	char *map;
 	zval *pixels;
@@ -2446,7 +2447,7 @@ PHP_METHOD(imagick, segmentimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long colorspace;
+	im_long colorspace;
 	zend_bool verbose = 0;
 	double cluster_threshold, smooth_threshold;
 
@@ -2471,7 +2472,7 @@ PHP_METHOD(imagick, sparsecolorimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long num_elements, sparse_method, channel = IM_DEFAULT_CHANNEL;
+	im_long num_elements, sparse_method, channel = IM_DEFAULT_CHANNEL;
 	zval *arguments;
 	double *double_array;
 
@@ -2513,7 +2514,7 @@ PHP_METHOD(imagick, remapimage)
 	php_imagick_object *intern;
 	php_imagick_object *intern_remap;
 	MagickBooleanType status;
-	long dither_method;
+	im_long dither_method;
 	zval *remap_param;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Ol", &remap_param, php_imagick_sc_entry, &dither_method) == FAILURE) {
@@ -2559,7 +2560,7 @@ PHP_METHOD(imagick, exportimagepixels)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long x, y, width, height, storage;
+	im_long x, y, width, height, storage;
 	char *map;
 	int map_size, i = 0;
 	IM_LEN_TYPE map_len;
@@ -2742,7 +2743,7 @@ PHP_METHOD(imagick, getimagechannelkurtosis)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	double kurtosis, skewness;
-	long channel = DefaultChannels;
+	im_long channel = DefaultChannels;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &channel) == FAILURE) {
 		return;
@@ -2774,7 +2775,7 @@ PHP_METHOD(imagick, functionimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	zval *arguments;
-	long func, num_elements, channel = IM_DEFAULT_CHANNEL;
+	im_long func, num_elements, channel = IM_DEFAULT_CHANNEL;
 	double *array;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "la|l", &func, &arguments, &channel) == FAILURE) {
@@ -2812,7 +2813,7 @@ PHP_METHOD(imagick, functionimage)
 PHP_METHOD(imagick, transformimagecolorspace)
 {
 	php_imagick_object *intern;
-	long colorspace;
+	im_long colorspace;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -2845,7 +2846,7 @@ PHP_METHOD(imagick, haldclutimage)
 	zval *objvar;
 	MagickBooleanType status;
 	php_imagick_object *intern, *hald;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|l", &objvar, php_imagick_sc_entry, &channel) == FAILURE) {
@@ -2880,7 +2881,7 @@ PHP_METHOD(imagick, autolevelimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &channel) == FAILURE) {
 		return;
@@ -3031,7 +3032,7 @@ PHP_METHOD(imagick, getcolorspace)
 PHP_METHOD(imagick, setcolorspace) 
 {
 	php_imagick_object *intern;
-	long colorspace;
+	im_long colorspace;
 	MagickBooleanType status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &colorspace) == FAILURE) {
@@ -3051,7 +3052,7 @@ PHP_METHOD(imagick, setcolorspace)
 PHP_METHOD(imagick, clampimage) 
 {
 	php_imagick_object *intern;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 	MagickBooleanType status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &channel) == FAILURE) {
@@ -3289,7 +3290,7 @@ PHP_METHOD(imagick, __tostring)
 PHP_METHOD(imagick, count)
 {
 	php_imagick_object *intern;
-	long mode = 0;
+	im_long mode = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &mode) == FAILURE) {
 		return;
@@ -3804,7 +3805,7 @@ PHP_METHOD(imagick, blurimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	/* Initialize channel type to all channels*/
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|l", &radius, &sigma, &channel) == FAILURE) {
@@ -3896,7 +3897,7 @@ PHP_METHOD(imagick, clear)
 */
 PHP_METHOD(imagick, scaleimage)
 {
-	long width, height, new_width, new_height;
+	im_long width, height, new_width, new_height;
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	zend_bool bestfit = 0;
@@ -3933,7 +3934,7 @@ PHP_METHOD(imagick, scaleimage)
 */
 PHP_METHOD(imagick, cropimage)
 {
-	long width, height, x, y;
+	im_long width, height, x, y;
 	php_imagick_object *intern;
 	MagickBooleanType status;
 
@@ -4098,7 +4099,7 @@ PHP_METHOD(imagick, trimimage)
 PHP_METHOD(imagick, chopimage)
 {
 	php_imagick_object *intern;
-	long width, height, x, y;
+	im_long width, height, x, y;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -4225,7 +4226,7 @@ PHP_METHOD(imagick, colorfloodfillimage)
 {
 	php_imagick_object *intern;
 	zval *fill_param, *border_param;
-	long x, y;
+	im_long x, y;
 	double fuzz;
 	MagickBooleanType status;
 	PixelWand *fill_wand, *border_wand;
@@ -4279,7 +4280,7 @@ PHP_METHOD(imagick, combineimages)
 {
 	MagickWand *tmp_wand;
 	php_imagick_object *intern, *intern_return;
-	long channel_type;
+	im_long channel_type;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &channel_type) == FAILURE) {
@@ -4411,7 +4412,7 @@ PHP_METHOD(imagick, newimage)
 	php_imagick_object *intern;
 	zval *param;
 	MagickBooleanType status;
-	long columns, rows;
+	im_long columns, rows;
 	char *format = NULL;
 	IM_LEN_TYPE format_len = 0;
 	PixelWand *color_wand;
@@ -4464,7 +4465,7 @@ PHP_METHOD(imagick, newpseudoimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long columns, rows;
+	im_long columns, rows;
 	char *pseudo_string;
 	IM_LEN_TYPE pseudo_string_len;
 	struct php_imagick_file_t file = {0};
@@ -4608,7 +4609,7 @@ PHP_METHOD(imagick, levelimage)
 	php_imagick_object *intern;
 	double black_point, gamma, white_point;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ddd|l", &black_point, &gamma, &white_point, &channel) == FAILURE) {
@@ -4698,7 +4699,7 @@ PHP_METHOD(imagick, mattefloodfillimage)
 {
 	php_imagick_object *intern;
 	zval *param;
-	long x, y;
+	im_long x, y;
 	double alpha, fuzz;
 	MagickBooleanType status;
 	PixelWand *color_wand;
@@ -4777,7 +4778,7 @@ PHP_METHOD(imagick, negateimage)
 	php_imagick_object *intern;
 	zend_bool gray;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b|l", &gray, &channel) == FAILURE) {
@@ -4809,7 +4810,7 @@ PHP_METHOD(imagick, paintopaqueimage)
 	zval *target_param, *fill_param;
 	double fuzz;
 	MagickBooleanType status;
-	long channel = DefaultChannels;
+	im_long channel = DefaultChannels;
 	PixelWand *target_wand, *fill_wand;
 	zend_bool target_allocated = 0, fill_allocated = 0;
 
@@ -4941,7 +4942,7 @@ PHP_METHOD(imagick, painttransparentimage)
 PHP_METHOD(imagick, previewimages)
 {
 	php_imagick_object *intern, *intern_return;
-	long preview;
+	im_long preview;
 	MagickWand *tmp_wand;
 
 	/* Parse parameters given to function */
@@ -5035,7 +5036,7 @@ PHP_METHOD(imagick, quantizeimage)
 PHP_METHOD(imagick, quantizeimages)
 {
 	php_imagick_object *intern;
-	long number_colors, colorspace, tree_depth;
+	im_long number_colors, colorspace, tree_depth;
 	zend_bool dither, measure_error;
 	MagickBooleanType status;
 
@@ -5137,7 +5138,7 @@ PHP_METHOD(imagick, removeimageprofile)
 PHP_METHOD(imagick, separateimagechannel)
 {
 	php_imagick_object *intern;
-	long channel;
+	im_long channel;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -5326,7 +5327,7 @@ PHP_METHOD(imagick, setimagebordercolor)
 PHP_METHOD(imagick, setimagechanneldepth)
 {
 	php_imagick_object *intern;
-	long channel_type, depth;
+	im_long channel_type, depth;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -5395,7 +5396,7 @@ PHP_METHOD(imagick, setimagecolormapcolor)
 PHP_METHOD(imagick, setimagecolorspace)
 {
 	php_imagick_object *intern;
-	long colorspace;
+	im_long colorspace;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -5424,7 +5425,7 @@ PHP_METHOD(imagick, setimagecolorspace)
 PHP_METHOD(imagick, setimagedispose)
 {
 	php_imagick_object *intern;
-	long dispose;
+	im_long dispose;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -5453,7 +5454,7 @@ PHP_METHOD(imagick, setimagedispose)
 PHP_METHOD(imagick, setimageextent)
 {
 	php_imagick_object *intern;
-	long rows, columns;
+	im_long rows, columns;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -5511,7 +5512,7 @@ PHP_METHOD(imagick, setimagegreenprimary)
 PHP_METHOD(imagick, setimageinterlacescheme)
 {
 	php_imagick_object *intern;
-	long interlace;
+	im_long interlace;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -5599,7 +5600,7 @@ PHP_METHOD(imagick, setimageredprimary)
 PHP_METHOD(imagick, setimagerenderingintent)
 {
 	php_imagick_object *intern;
-	long rendering_intent;
+	im_long rendering_intent;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -5628,7 +5629,7 @@ PHP_METHOD(imagick, setimagerenderingintent)
 PHP_METHOD(imagick, setimagevirtualpixelmethod)
 {
 	php_imagick_object *intern;
-	long virtual_pixel;
+	im_long virtual_pixel;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &virtual_pixel) == FAILURE) {
@@ -5682,7 +5683,7 @@ PHP_METHOD(imagick, sigmoidalcontrastimage)
 	zend_bool sharpen;
 	double contrast, midpoint;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "bdd|l", &sharpen, &contrast, &midpoint, &channel) == FAILURE) {
@@ -5844,7 +5845,7 @@ PHP_METHOD(imagick, unsharpmaskimage)
 	php_imagick_object *intern;
 	double radius, sigma, amount, threshold;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dddd|l", &radius, &sigma, &amount, &threshold, &channel) == FAILURE) {
@@ -5880,7 +5881,7 @@ PHP_METHOD(imagick, convolveimage)
 	php_imagick_object *intern;
 	php_imagickkernel_object *kernel;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|l", &objvar, php_imagickkernel_sc_entry, &channel) == FAILURE) {
 		return;
@@ -5911,9 +5912,9 @@ PHP_METHOD(imagick, convolveimage)
 	MagickBooleanType status;
 	zval *kernel_array;
 	double *kernel;
-	long channel = DefaultChannels;
+	im_long channel = DefaultChannels;
 	unsigned long order = 0;
-	long num_elements = 0;
+	im_long num_elements = 0;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a|l",  &kernel_array, &channel) == FAILURE) {
@@ -5952,7 +5953,7 @@ PHP_METHOD(imagick, convolveimage)
 PHP_METHOD(imagick, cyclecolormapimage)
 {
 	php_imagick_object *intern;
-	long displace;
+	im_long displace;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -6014,7 +6015,7 @@ PHP_METHOD(imagick, getimageregion)
 {
 	MagickWand *tmp_wand;
 	php_imagick_object *intern, *intern_return;
-	long width, height, x, y;
+	im_long width, height, x, y;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llll", &width, &height, &x, &y) == FAILURE) {
@@ -6192,10 +6193,10 @@ PHP_METHOD(imagick, equalizeimage)
 PHP_METHOD(imagick, evaluateimage)
 {
 	php_imagick_object *intern;
-	long evaluate_operator;
+	im_long evaluate_operator;
 	double constant;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ld|l", &evaluate_operator, &constant, &channel) == FAILURE) {
@@ -6435,7 +6436,7 @@ PHP_METHOD(imagick, getimagebordercolor)
 PHP_METHOD(imagick, getimagechanneldepth)
 {
 	php_imagick_object *intern;
-	long channel_type, channel_depth;
+	im_long channel_type, channel_depth;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &channel_type) == FAILURE) {
@@ -6458,7 +6459,7 @@ PHP_METHOD(imagick, getimagechanneldistortion)
 {
 	zval *objvar;
 	php_imagick_object *intern, *intern_second;
-	long channel_type, metric_type;
+	im_long channel_type, metric_type;
 	double distortion;
 	MagickBooleanType status;
 
@@ -6493,7 +6494,7 @@ PHP_METHOD(imagick, getimagechanneldistortion)
 PHP_METHOD(imagick, getimagechannelextrema)
 {
 	php_imagick_object *intern;
-	long channel_type;
+	im_long channel_type;
 	size_t minima, maxima;
 	MagickBooleanType status;
 
@@ -6529,7 +6530,7 @@ PHP_METHOD(imagick, getimagechannelextrema)
 PHP_METHOD(imagick, getimagechannelmean)
 {
 	php_imagick_object *intern;
-	long channel_type;
+	im_long channel_type;
 	double mean, standard_deviation;
 	MagickBooleanType status;
 
@@ -6674,7 +6675,7 @@ PHP_METHOD(imagick, getimagecolormapcolor)
 	php_imagickpixel_object *internp;
 	MagickBooleanType status;
 	PixelWand *tmp_wand;
-	long index;
+	im_long index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
 		return;
@@ -6797,7 +6798,7 @@ PHP_METHOD(imagick, getimagedistortion)
 {
 	zval *objvar;
 	php_imagick_object *intern, *intern_second;
-	long metric_type;
+	im_long metric_type;
 	double distortion;
 	MagickBooleanType status;
 
@@ -7134,7 +7135,7 @@ PHP_METHOD(imagick, getimagepixelcolor)
 	php_imagickpixel_object *internp;
 	MagickBooleanType status;
 	PixelWand *tmp_wand;
-	long x, y;
+	im_long x, y;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &x, &y) == FAILURE) {
 		return;
@@ -7533,7 +7534,7 @@ zend_bool s_resize_bounding_box(MagickWand *magick_wand, long box_width, long bo
 */
 PHP_METHOD(imagick, thumbnailimage)
 {
-	long width, height, new_width, new_height;
+	im_long width, height, new_width, new_height;
 	php_imagick_object *intern;
 	zend_bool bestfit = 0, fill = 0;
 	zend_bool legacy = 0;
@@ -7585,10 +7586,10 @@ static inline double im_round_helper_class(double value) {
 
 static
 void s_calculate_crop(
-	long orig_width, long orig_height,
-	long desired_width, long desired_height,
-	long *new_width, long *new_height,
-	long *offset_x, long *offset_y,
+	im_long orig_width, im_long orig_height,
+	im_long desired_width, im_long desired_height,
+	im_long *new_width, im_long *new_height,
+	im_long *offset_x, im_long *offset_y,
 	zend_bool legacy
 ) {
 	double ratio_x, ratio_y;
@@ -7629,10 +7630,10 @@ void s_calculate_crop(
 */
 PHP_METHOD(imagick, calculatecrop)
 {
-	long orig_width, orig_height;
-	long desired_width, desired_height;
-	long new_width, new_height;
-	long offset_x, offset_y;
+	im_long orig_width, orig_height;
+	im_long desired_width, desired_height;
+	im_long new_width, new_height;
+	im_long offset_x, offset_y;
 	zend_bool legacy = 0;
 
 	/* Parse parameters given to function */
@@ -7667,11 +7668,11 @@ PHP_METHOD(imagick, calculatecrop)
 
 
 static
-zend_bool s_crop_thumbnail_image(MagickWand *magick_wand, long desired_width, long desired_height, zend_bool legacy TSRMLS_DC)
+zend_bool s_crop_thumbnail_image(MagickWand *magick_wand, im_long desired_width, im_long desired_height, zend_bool legacy TSRMLS_DC)
 {
-	long offset_x = 0, offset_y = 0, new_width, new_height;
-	long orig_width  = MagickGetImageWidth(magick_wand);
-	long orig_height = MagickGetImageHeight(magick_wand);
+	im_long offset_x = 0, offset_y = 0, new_width, new_height;
+	im_long orig_width  = (im_long)MagickGetImageWidth(magick_wand);
+	im_long orig_height = (im_long)MagickGetImageHeight(magick_wand);
 
 	/* Already at the size, just strip profiles */
 	if ((orig_width == desired_width) && (orig_height == desired_height)) {
@@ -7714,7 +7715,7 @@ zend_bool s_crop_thumbnail_image(MagickWand *magick_wand, long desired_width, lo
 */
 PHP_METHOD(imagick, cropthumbnailimage)
 {
-	long crop_width, crop_height;
+	im_long crop_width, crop_height;
 	zend_bool legacy = 0;
 	php_imagick_object *intern;
 
@@ -7930,7 +7931,7 @@ PHP_METHOD(imagick, getimageindex)
 */
 PHP_METHOD(imagick, setimageindex)
 {
-	long index;
+	im_long index;
 	MagickBooleanType status;
 	php_imagick_object *intern;
 
@@ -8563,7 +8564,7 @@ PHP_METHOD(imagick, setimagebackgroundcolor)
 PHP_METHOD(imagick, setimagechannelmask)
 {
 	php_imagick_object *intern;
-	long channel;
+	im_long channel;
 	ChannelType previous_channel_type;
 
 	/* Parse parameters given to function */
@@ -8589,7 +8590,7 @@ PHP_METHOD(imagick, setimagechannelmask)
 PHP_METHOD(imagick, setimagecompose)
 {
 	php_imagick_object *intern;
-	long compose;
+	im_long compose;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -8634,7 +8635,7 @@ PHP_METHOD(imagick, getimagecompression)
 PHP_METHOD(imagick, setimagecompression)
 {
 	php_imagick_object *intern;
-	long compression;
+	im_long compression;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -8664,7 +8665,7 @@ PHP_METHOD(imagick, setimagecompression)
 PHP_METHOD(imagick, setimagedelay)
 {
 	php_imagick_object *intern;
-	long delay;
+	im_long delay;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -8770,7 +8771,7 @@ PHP_METHOD(imagick, compareimagechannels)
 	MagickWand *tmp_wand;
 	zval *objvar;
 	php_imagick_object *intern, *intern_second, *intern_return;
-	long channel_type, metric_type;
+	im_long channel_type, metric_type;
 	double distortion;
 #ifdef ZEND_ENGINE_3
 	zval new_wand;
@@ -8826,7 +8827,7 @@ PHP_METHOD(imagick, compareimagelayers)
 {
 	MagickWand *tmp_wand;
 	php_imagick_object *intern, *intern_return;
-	long compare_method;
+	im_long compare_method;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &compare_method) == FAILURE) {
 		return;
@@ -8959,7 +8960,7 @@ PHP_METHOD(imagick, frameimage)
 	zval *param;
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long width, height, inner_bevel, outer_bevel;
+	im_long width, height, inner_bevel, outer_bevel;
 	PixelWand *color_wand;
 	zend_bool allocated;
 
@@ -9007,7 +9008,7 @@ PHP_METHOD(imagick, fximage)
 	php_imagick_object *intern, *intern_return;
 	char *expression;
 	IM_LEN_TYPE expression_len;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &expression, &expression_len, &channel) == FAILURE) {
@@ -9041,7 +9042,7 @@ PHP_METHOD(imagick, gammaimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	double gamma;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d|l", &gamma, &channel) == FAILURE) {
 		return;
@@ -9071,7 +9072,7 @@ PHP_METHOD(imagick, gaussianblurimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	double radius, sigma;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|l", &radius, &sigma, &channel) == FAILURE) {
 		return;
@@ -9101,7 +9102,7 @@ PHP_METHOD(imagick, compareimages)
 	MagickWand *tmp_wand;
 	zval *objvar;
 	php_imagick_object *intern, *intern_second, *intern_return;
-	long metric_type;
+	im_long metric_type;
 	double distortion;
 #ifdef ZEND_ENGINE_3
 	zval new_wand;
@@ -9184,7 +9185,7 @@ PHP_METHOD(imagick, contrastimage)
 PHP_METHOD(imagick, setimagedepth)
 {
 	php_imagick_object *intern;
-	long depth;
+	im_long depth;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -9242,7 +9243,7 @@ PHP_METHOD(imagick, setimagegamma)
 PHP_METHOD(imagick, setimageiterations)
 {
 	php_imagick_object *intern;
-	long iterations;
+	im_long iterations;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -9310,7 +9311,7 @@ PHP_METHOD(imagick, setimagemattecolor)
 PHP_METHOD(imagick, setimagepage)
 {
 	php_imagick_object *intern;
-	long width, height, x, y;
+	im_long width, height, x, y;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -9368,7 +9369,7 @@ PHP_METHOD(imagick, setimageresolution)
 PHP_METHOD(imagick, setimagescene)
 {
 	php_imagick_object *intern;
-	long scene;
+	im_long scene;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -9397,7 +9398,7 @@ PHP_METHOD(imagick, setimagescene)
 PHP_METHOD(imagick, setimagetickspersecond)
 {
 	php_imagick_object *intern;
-	long ticks_per_second;
+	im_long ticks_per_second;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -9426,7 +9427,7 @@ PHP_METHOD(imagick, setimagetickspersecond)
 PHP_METHOD(imagick, setimagetype)
 {
 	php_imagick_object *intern;
-	long image_type;	
+	im_long image_type;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -9455,7 +9456,7 @@ PHP_METHOD(imagick, setimagetype)
 PHP_METHOD(imagick, setimageunits)
 {
 	php_imagick_object *intern;
-	long units;
+	im_long units;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -9582,7 +9583,7 @@ PHP_METHOD(imagick, normalizeimage)
 {
 	MagickBooleanType status;
 	php_imagick_object *intern;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &channel) == FAILURE) {
@@ -9847,7 +9848,7 @@ PHP_METHOD(imagick, getimagecompressionquality)
 */
 PHP_METHOD(imagick, setimagecompressionquality)
 {
-	long quality;
+	im_long quality;
 	php_imagick_object *intern;
 	MagickBooleanType status;
 
@@ -9880,9 +9881,9 @@ PHP_METHOD(imagick, compositeimage)
 	zval *objvar;
 	php_imagick_object *intern;
 	php_imagick_object *intern_second;
-	long x, y;
-	long composite_id = 0;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long x, y;
+	im_long composite_id = 0;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Olll|l", &objvar, php_imagick_sc_entry, &composite_id, &x, &y, &channel) == FAILURE) {
 		return;
@@ -9941,8 +9942,8 @@ PHP_METHOD(imagick, addnoiseimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long noise;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long noise;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &noise, &channel) == FAILURE) {
 		return;
@@ -9980,7 +9981,7 @@ PHP_METHOD(imagick, montageimage)
 	php_imagickdraw_object *internd;
 	char *tile_geometry, *thumbnail_geometry, *frame;
 	IM_LEN_TYPE tile_geometry_len, thumbnail_geometry_len, frame_len;
-	long montage_mode = 0;
+	im_long montage_mode = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Ossls", &objvar, php_imagickdraw_sc_entry,
 		&tile_geometry, &tile_geometry_len,
@@ -10087,7 +10088,7 @@ PHP_METHOD(imagick, borderimage)
 	zval *param;
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long width, height;
+	im_long width, height;
 	PixelWand *color_wand;
 	zend_bool allocated;
 
@@ -10133,7 +10134,7 @@ PHP_METHOD(imagick, thresholdimage)
 	php_imagick_object *intern;
 	double threshold;
 	MagickBooleanType status;
-	long channel = DefaultChannels;
+	im_long channel = DefaultChannels;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d|l", &threshold, &channel) == FAILURE) {
 		return;
@@ -10162,7 +10163,7 @@ PHP_METHOD(imagick, thresholdimage)
 PHP_METHOD(imagick, adaptivethresholdimage)
 {
 	php_imagick_object *intern;
-	long width, height, offset;
+	im_long width, height, offset;
 	MagickBooleanType status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lll", &width, &height, &offset) == FAILURE) {
@@ -10193,7 +10194,7 @@ PHP_METHOD(imagick, sharpenimage)
 	double sigma, radius;
 	MagickBooleanType status;
 	php_imagick_object *intern;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|l", &radius, &sigma, &channel) == FAILURE) {
@@ -10221,7 +10222,7 @@ PHP_METHOD(imagick, sharpenimage)
 PHP_METHOD(imagick, shaveimage)
 {
 	php_imagick_object *intern;
-	long columns, rows;
+	im_long columns, rows;
 	MagickBooleanType status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &columns, &rows) == FAILURE) {
@@ -10288,7 +10289,7 @@ PHP_METHOD(imagick, shearimage)
 */
 PHP_METHOD(imagick, spliceimage)
 {
-	long width, height, x, y;
+	im_long width, height, x, y;
 	php_imagick_object *intern;
 	MagickBooleanType status;
 
@@ -10320,7 +10321,7 @@ PHP_METHOD(imagick, steganoimage)
 {
 	zval *objvar;
 	php_imagick_object *intern, *intern_second, *intern_return;
-	long offset;
+	im_long offset;
 	MagickWand *tmp_wand;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Ol", &objvar, php_imagick_sc_entry, &offset) == FAILURE) {
@@ -10422,7 +10423,7 @@ PHP_METHOD(imagick, rotateimage)
 PHP_METHOD(imagick, sampleimage)
 {
 	php_imagick_object *intern;
-	long columns, rows;
+	im_long columns, rows;
 	MagickBooleanType status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &columns, &rows) == FAILURE) {
@@ -10452,7 +10453,7 @@ PHP_METHOD(imagick, solarizeimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long threshold;
+	im_long threshold;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &threshold) == FAILURE) {
 		return;
@@ -10513,7 +10514,7 @@ PHP_METHOD(imagick, motionblurimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	double radius, sigma, angle;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ddd|l", &radius, &sigma, &angle, &channel) == FAILURE) {
 		return;
@@ -10587,7 +10588,7 @@ PHP_METHOD(imagick, morphimages)
 {
 	MagickWand *tmp_wand;
 	php_imagick_object *intern, *intern_return;
-	long frames;
+	im_long frames;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &frames) == FAILURE) {
 		return;
@@ -10649,7 +10650,7 @@ PHP_METHOD(imagick, posterizeimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long levels;
+	im_long levels;
 	zend_bool dither;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lb", &levels, &dither) == FAILURE) {
@@ -10683,7 +10684,7 @@ PHP_METHOD(imagick, radialblurimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	double angle;
-	long channel = DefaultChannels;
+	im_long channel = DefaultChannels;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d|l", &angle, &channel) == FAILURE) {
 		return;
@@ -10714,7 +10715,7 @@ PHP_METHOD(imagick, raiseimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long width, height, x, y;
+	im_long width, height, x, y;
 	zend_bool raise;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llllb", &width, &height, &x, &y, &raise) == FAILURE) {
@@ -10781,7 +10782,7 @@ PHP_METHOD(imagick, blackthresholdimage)
 PHP_METHOD(imagick, resampleimage)
 {
 	double xRes, yRes, blur;
-	long filter = 0;
+	im_long filter = 0;
 	php_imagick_object *intern;
 	MagickBooleanType status;
 
@@ -10820,7 +10821,7 @@ PHP_METHOD(imagick, resampleimage)
 PHP_METHOD(imagick, resizeimage)
 {
 	double blur;
-	long width, height, new_width, new_height, filter = 0;
+	im_long width, height, new_width, new_height, filter = 0;
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	zend_bool bestfit = 0;
@@ -10861,7 +10862,7 @@ PHP_METHOD(imagick, resizeimage)
 */
 PHP_METHOD(imagick, rollimage)
 {
-	long x, y;
+	im_long x, y;
 	php_imagick_object *intern;
 	MagickBooleanType status;
 
@@ -10989,7 +10990,7 @@ PHP_METHOD(imagick, getpixelregioniterator)
 {
 	PixelIterator *pixel_it;
 	php_imagick_object *intern;
-	long x, y, columns, rows;
+	im_long x, y, columns, rows;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llll", &x, &y, &columns, &rows) == FAILURE) {
@@ -11376,7 +11377,7 @@ PHP_METHOD(imagick, getreleasedate)
 */
 PHP_METHOD(imagick, getresource)
 {
-	long resource_type;
+	im_long resource_type;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &resource_type) == FAILURE) {
 		return;
@@ -11391,7 +11392,7 @@ PHP_METHOD(imagick, getresource)
 */
 PHP_METHOD(imagick, getresourcelimit)
 {
-	long resource_type;
+	im_long resource_type;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &resource_type) == FAILURE) {
 		return;
@@ -11523,7 +11524,7 @@ PHP_METHOD(imagick, setbackgroundcolor)
 PHP_METHOD(imagick, setcompression)
 {
 	php_imagick_object *intern;
-	long compression;
+	im_long compression;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -11549,7 +11550,7 @@ PHP_METHOD(imagick, setcompression)
 PHP_METHOD(imagick, setcompressionquality)
 {
 	php_imagick_object *intern;
-	long quality;
+	im_long quality;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -11631,7 +11632,7 @@ PHP_METHOD(imagick, setformat)
 PHP_METHOD(imagick, setinterlacescheme)
 {
 	php_imagick_object *intern;
-	long schema;
+	im_long schema;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -11685,7 +11686,7 @@ PHP_METHOD(imagick, setpage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long width, height, x, y;
+	im_long width, height, x, y;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llll", &width, &height, &x, &y) == FAILURE) {
@@ -11791,7 +11792,7 @@ PHP_METHOD(imagick, setprogressmonitor)
 PHP_METHOD(imagick, setresourcelimit)
 {
 	MagickBooleanType status;
-	long type, limit;
+	im_long type, limit;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &type, &limit) == FAILURE) {
@@ -11844,7 +11845,7 @@ PHP_METHOD(imagick, setsamplingfactors)
 	MagickBooleanType status;
 	zval *factors;
 	double *double_array;
-	long elements = 0;
+	im_long elements = 0;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &factors) == FAILURE) {
@@ -11878,7 +11879,7 @@ PHP_METHOD(imagick, setsamplingfactors)
 PHP_METHOD(imagick, setsize)
 {
 	php_imagick_object *intern;
-	long columns, rows;
+	im_long columns, rows;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -11904,7 +11905,7 @@ PHP_METHOD(imagick, setsize)
 PHP_METHOD(imagick, settype)
 {
 	php_imagick_object *intern;
-	long type;
+	im_long type;
 	MagickBooleanType status;
 
 	/* Parse parameters given to function */
@@ -11933,7 +11934,7 @@ PHP_METHOD(imagick, brightnesscontrastimage)
 	php_imagick_object *intern;
 	double brightness, contrast;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|l", &brightness, &contrast, &channel) == FAILURE) {
@@ -12004,7 +12005,7 @@ PHP_METHOD(imagick, colormatriximage)
 	zval *color_matrix_array;
 	double *colors;
 	size_t order = 0;
-	long num_elements = 0;
+	im_long num_elements = 0;
 	KernelInfo *kernel_color_matrix;
 
 	/* Parse parameters given to function */
@@ -12069,7 +12070,7 @@ PHP_METHOD(imagick, selectiveblurimage)
 	php_imagick_object *intern;
 	double brightness, contrast, threshold;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	/* Parse parameters given to function */
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ddd|l", &brightness, &contrast, &threshold, &channel) == FAILURE) {
@@ -12103,7 +12104,7 @@ PHP_METHOD(imagick, rotationalblurimage)
 	php_imagick_object *intern;
 	MagickBooleanType status;
 	double angle;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d|l", &angle, &channel) == FAILURE) {
 		return;
@@ -12143,9 +12144,9 @@ PHP_METHOD(imagick, statisticimage)
 {
 	php_imagick_object *intern;
 	MagickBooleanType status;
-	long type;
-	long width, height;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long type;
+	im_long width, height;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lll|l", &type, &width, &height, &channel) == FAILURE) {
 		return;
@@ -12170,7 +12171,7 @@ PHP_METHOD(imagick, statisticimage)
 #endif
 
 #if MagickLibVersion >= 0x652
-/* {{{ proto Imagick Imagick::subimagematch(Imagick subimage[, array &$bestMatch[, float &similarity]])
+/* {{{ proto Imagick Imagick::subimagematch(Imagick subimage[, array &$bestMatch[, float &similarity[, float similarity_threshold = 0[, int metric = ]]]])
 	Searches for a subimage in the current image and returns a similarity image such that an exact match location is completely white and if none of the pixels match, black, otherwise some gray level in-between.
 	You can also pass in the optional parameters bestMatch and similarity. After calling the function similarity will be
 	set to the 'score' of the similarity between the subimage and the matching position in the larger image, bestMatch will
@@ -12181,6 +12182,7 @@ PHP_METHOD(imagick, subimagematch)
 	php_imagick_object *intern;
 	RectangleInfo best_match_offset;
 	double similarity;
+	double similarity_threshold = 0.0;
 
 	zval *reference_obj;
 	php_imagick_object *reference_intern;
@@ -12191,13 +12193,21 @@ PHP_METHOD(imagick, subimagematch)
 	//http://devzone.zend.com/317/extension-writing-part-ii-parameters-arrays-and-zvals/
 	MagickWand *new_wand;
 
-#ifdef ZEND_ENGINE_3
-	char *param_string = "O|z/z/";
+	
+#if MagickLibVersion >= 0x700
+	im_long metric = RootMeanSquaredErrorMetric;
 #else
-	char *param_string = "O|zz";
+	im_long metric = 0;
 #endif
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, param_string, &reference_obj, php_imagick_sc_entry, &z_best_match_offset, &z_similarity) == FAILURE) {
+#ifdef ZEND_ENGINE_3
+	char *param_string = "O|z/z/dl";
+#else
+	char *param_string = "O|zzdl";
+	
+#endif
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, param_string, &reference_obj, php_imagick_sc_entry, &z_best_match_offset, &z_similarity, &similarity_threshold, &metric) == FAILURE) {
 		return;
 	}
 	reference_intern = Z_IMAGICK_P(reference_obj);
@@ -12207,8 +12217,6 @@ PHP_METHOD(imagick, subimagematch)
 		return;
 
 #if MagickLibVersion >= 0x700
-	MetricType metric = RootMeanSquaredErrorMetric;
-	double similarity_threshold = 1.0;
 	new_wand = MagickSimilarityImage(intern->magick_wand, reference_intern->magick_wand,
 	metric, similarity_threshold,
   &best_match_offset, &similarity);
@@ -12327,9 +12335,9 @@ PHP_METHOD(imagick, morphology)
 	zval *objvar;
 	php_imagick_object *intern;
 	php_imagickkernel_object *kernel;
-	long morphologyMethod, iterations;
+	im_long morphologyMethod, iterations;
 	MagickBooleanType status;
-	long channel = IM_DEFAULT_CHANNEL;
+	im_long channel = IM_DEFAULT_CHANNEL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llO|l", &morphologyMethod, &iterations, &objvar, php_imagickkernel_sc_entry, &channel) == FAILURE) {
 		return;
@@ -12361,7 +12369,7 @@ PHP_METHOD(imagick, filter)
 	php_imagick_object *intern;
 	php_imagickkernel_object *kernel;
 	MagickBooleanType status;
-	long channel = 0;
+	im_long channel = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|l", &objvar, php_imagickkernel_sc_entry, &channel) == FAILURE) {
 		return;
