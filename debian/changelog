@@ -2,6 +2,8 @@ php-imagick (3.4.0~rc5-1) unstable; urgency=medium
 
   * Imported Upstream version 3.4.0~rc5
   * Rebase patches on top of 3.4.0~rc5 release
+  * Override wrong license-problem-php-license lintian check for packages
+    from PECL
 
  -- Ondřej Surý <ondrej@debian.org>  Wed, 13 Jan 2016 14:05:57 +0100
 
