@@ -1,2 +1,2 @@
-Test-Command: cd imagick-* && phpunit --verbose tests
-Depends: php5-cli, php5-imagick, phpunit
+Test-Command: cd imagick-*/tests && MAGICK_THREAD_LIMIT=1 phpunit --verbose .
+Depends: php-cli, php-imagick, gsfonts, libmagickcore-6.q16-2-extra, phpunit
