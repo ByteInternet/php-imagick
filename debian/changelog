@@ -1,3 +1,16 @@
+php-imagick (3.4.0-1) unstable; urgency=medium
+
+  * Imported Upstream version 3.4.0
+  * Fix failures in autopkgtests (LP: #1549942)
+    - d/tests/control: run phpunit from tests/ subdirectory to pick up
+      the SKIP helper.
+    - d/tests/control: limit imagemagick to 1 thread to avoid openmp
+      related segfaults.
+    - d/tests/control: add gsfonts and libmagickcore-6.q16-2-extra as
+      test dependencies.
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 07 Mar 2016 12:47:48 +0100
+
 php-imagick (3.4.0~rc6-2) unstable; urgency=medium
 
   * Force rebuild with dh_php >= 0.7
