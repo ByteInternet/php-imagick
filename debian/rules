@@ -2,11 +2,11 @@
 
 SHELL=/bin/sh -e
 
-PECL_NAME    := $(shell dpkg-parsechangelog -SSource | sed -e s/php-//)
+PECL_NAME    := imagick
 SOURCE_DIR   := $(shell ls -1d $(PECL_NAME)-*)
 INSTALL_ROOT := $(CURDIR)/debian/php-$(PECL_NAME)
 
-PHP_VERSIONS := $(shell /usr/sbin/phpquery -V)
+PHP_VERSIONS := 7.0
 
 %:
 	dh $@ --with php --sourcedirectory=$(SOURCE_DIR)
